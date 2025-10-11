@@ -8,8 +8,9 @@ import { type Module, type ModuleType } from '@/types/module';
 import { type ParsedRack, type RackRow } from '@/types/rack';
 import logger from '@/lib/logger';
 
-// Module type detection patterns
+// Module type detection patterns (October 2025 update: comprehensive video synthesis support)
 const MODULE_TYPE_PATTERNS: Record<string, ModuleType> = {
+  // Audio synthesis modules
   oscillator: 'VCO',
   vco: 'VCO',
   filter: 'VCF',
@@ -31,6 +32,75 @@ const MODULE_TYPE_PATTERNS: Record<string, ModuleType> = {
   clock: 'Clock',
   logic: 'Logic',
   random: 'Random',
+
+  // Video synthesis modules - Generic patterns
+  'sync generator': 'SyncGenerator',
+  'sync gen': 'SyncGenerator',
+  synchronizer: 'SyncGenerator',
+  'ramp generator': 'RampGenerator',
+  'ramp gen': 'RampGenerator',
+  ramp: 'RampGenerator',
+  'shape generator': 'ShapeGenerator',
+  'shape gen': 'ShapeGenerator',
+  colorizer: 'Colorizer',
+  coloriser: 'Colorizer', // British spelling
+  keyer: 'Keyer',
+  'key generator': 'Keyer',
+  'video encoder': 'VideoEncoder',
+  encoder: 'VideoEncoder',
+  'video decoder': 'VideoDecoder',
+  decoder: 'VideoDecoder',
+  'video mixer': 'VideoMixer',
+  'rgb mixer': 'VideoMixer',
+  'rgb mix': 'VideoMixer',
+  'video oscillator': 'VideoOscillator',
+  'wideband oscillator': 'VideoOscillator',
+  multiplier: 'VideoProcessor',
+  'detail extractor': 'VideoProcessor',
+  'video processor': 'VideoProcessor',
+  'video display': 'VideoDisplay',
+  visualizer: 'VideoDisplay',
+  monitor: 'VideoDisplay',
+
+  // LZX Industries specific modules (primary video synthesis manufacturer)
+  'visual cortex': 'SyncGenerator', // Master sync + I/O
+  chromagnon: 'SyncGenerator', // Advanced sync + processing
+  esg3: 'SyncGenerator', // Encoder & Sync Generator (Gen3)
+  angles: 'RampGenerator', // Horizontal ramp generator
+  scrolls: 'RampGenerator', // Vertical ramp generator
+  diver: 'RampGenerator', // Multifunction ramp generator
+  dsg3: 'ShapeGenerator', // Digital Shape Generator
+  passage: 'Colorizer', // Primary colorizer module
+  contour: 'Colorizer', // Contour colorizer
+  fkg3: 'Keyer', // Fader & Key Generator
+  smx3: 'VideoMixer', // Stereo Video Mixer (RGB matrix)
+  dwo3: 'VideoOscillator', // Digital Wideband Oscillator
+  'escher sketch': 'VideoDisplay', // Display with integrated screen
+  'liquid tv': 'VideoDisplay', // Confidence monitor
+  tbc2: 'VideoProcessor', // Time Base Corrector
+  'video motion': 'VideoProcessor', // Motion processing
+  'video calculator': 'VideoProcessor', // Math operations
+  mapper: 'VideoProcessor', // Coordinate mapping
+  'polar fringe': 'VideoProcessor', // Polar coordinate processor
+  staircase: 'VideoUtility', // Signal distribution
+  switcher: 'VideoUtility', // Signal routing
+  pab: 'VideoUtility', // Precision Adder Bank
+  pgo: 'VideoUtility', // Precision Gate Output
+  mlt: 'VideoUtility', // Multiple
+  lnk: 'VideoUtility', // Link module
+
+  // Syntonie (European DIY video synthesis manufacturer)
+  rampes: 'RampGenerator', // Ramp and shape generator
+  entree: 'VideoDecoder', // Component to RGB decoder (French: entrée)
+  sortie: 'VideoEncoder', // RGB to component encoder (French: sortie)
+  isohelie: 'Keyer', // Posterization/keying effect
+  seuils: 'VideoProcessor', // Comparator/phase shifter
+  component: 'VideoDecoder', // Component video decoder
+  cbv001: 'VideoProcessor', // Circuit Bent Video Enhancer
+  cbv002: 'VideoProcessor', // Circuit Bent Video Delay
+  vu008: 'VideoProcessor', // Dual Ramp Phase Shifter
+
+  // Generic video fallback (if none of the above match)
   video: 'Video',
 };
 
@@ -100,7 +170,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
               return JSON.parse(rackMatch[1]);
             } catch (e) {
               logger.error('Failed to parse rack JSON', {
-                error: e instanceof Error ? e.message : 'Unknown error'
+                error: e instanceof Error ? e.message : 'Unknown error',
               });
             }
           }
@@ -112,7 +182,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
               return { modules: JSON.parse(modulesMatch[1]) };
             } catch (e) {
               logger.error('Failed to parse modules JSON', {
-                error: e instanceof Error ? e.message : 'Unknown error'
+                error: e instanceof Error ? e.message : 'Unknown error',
               });
             }
           }
@@ -147,7 +217,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     });
 
     logger.info('✅ Modules extracted from page', {
-      moduleCount: rackData?.modules?.length || 0
+      moduleCount: rackData?.modules?.length || 0,
     });
 
     interface RawModuleData {
@@ -244,7 +314,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
       rackId,
       rackName,
       moduleCount: modules.length,
-      rowCount: rows.length
+      rowCount: rows.length,
     });
 
     return parsedRack;
@@ -255,7 +325,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     logger.error('❌ Scraping failed', {
       url,
       error: errorMessage,
-      stack: errorStack
+      stack: errorStack,
     });
 
     throw new Error(`Failed to scrape ModularGrid rack: ${error}`);

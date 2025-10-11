@@ -10,6 +10,10 @@ const nextConfig: NextConfig = {
   // Performance: 12% faster initial loads, 2.5x faster interactions
   experimental: {
     reactCompiler: true, // Auto-memoization, granular optimization
+    serverActions: {
+      // Allow GitHub Codespaces and local origins for Server Actions
+      allowedOrigins: ['localhost:3000', '*.app.github.dev'],
+    },
   },
 
   // Turbopack Configuration (replaces experimental.turbo in Next.js 15+)

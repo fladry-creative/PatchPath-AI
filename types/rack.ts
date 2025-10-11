@@ -6,6 +6,7 @@
 import { type Module, type ModuleType } from './module';
 
 export interface RackCapabilities {
+  // Audio synthesis capabilities
   hasVCO: boolean;
   hasVCF: boolean;
   hasVCA: boolean;
@@ -13,6 +14,20 @@ export interface RackCapabilities {
   hasEnvelope: boolean;
   hasSequencer: boolean;
   hasEffects: boolean;
+
+  // Video synthesis capabilities (October 2025 update)
+  hasVideoSync?: boolean; // CRITICAL: Must have sync generator for video
+  hasRampGenerator?: boolean; // Core building block for video patterns
+  hasColorizer?: boolean; // For color video generation
+  hasKeyer?: boolean; // For video compositing
+  hasVideoEncoder?: boolean; // For output to HDMI/composite displays
+  hasVideoDecoder?: boolean; // For processing external video sources
+  videoModuleTypes?: ModuleType[]; // List of specific video module types
+  videoSyncSource?: string; // Which module provides sync (e.g., "ESG3", "Visual Cortex")
+  isVideoRack?: boolean; // Majority of modules are video synthesis
+  isHybridRack?: boolean; // Mix of audio + video modules
+
+  // General capabilities
   moduleTypes: ModuleType[];
   totalHP: number;
   totalPowerDraw: {
