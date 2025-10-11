@@ -92,7 +92,7 @@ IMPORTANT: Return your analysis as valid JSON in this exact structure:
   console.log('🔍 Analyzing rack image with Claude Vision...');
 
   const message = await anthropic.messages.create({
-    model: 'claude-3-5-sonnet-20241022', // Use Sonnet for better vision capabilities
+    model: 'claude-3-haiku-20240307', // Use Haiku for cost-effective vision
     max_tokens: 4096,
     messages: [
       {
@@ -121,9 +121,17 @@ IMPORTANT: Return your analysis as valid JSON in this exact structure:
 
   // Handle potential JSON code block wrapping
   let jsonText = responseText;
+
+  // Try to extract from ```json code block first
   const jsonMatch = responseText.match(/```json\n([\s\S]*?)\n```/);
   if (jsonMatch) {
     jsonText = jsonMatch[1];
+  } else {
+    // Try to find JSON object in the text (handles "Here is my analysis: {...")
+    const objectMatch = responseText.match(/\{[\s\S]*\}/);
+    if (objectMatch) {
+      jsonText = objectMatch[0];
+    }
   }
 
   const analysis: RackVisionAnalysis = JSON.parse(jsonText);
@@ -145,12 +153,12 @@ export function isVisionConfigured(): boolean {
  */
 export function getVisionModelInfo() {
   return {
-    model: 'claude-3-5-sonnet-20241022',
+    model: 'claude-3-haiku-20240307',
     provider: 'Anthropic',
     capabilities: ['image_analysis', 'module_identification', 'json_output'],
     costPer1MTokens: {
-      input: 3.0, // Sonnet pricing for vision
-      output: 15.0,
+      input: 0.25, // Haiku pricing for vision
+      output: 1.25,
     },
   };
 }
