@@ -20,7 +20,7 @@
     }
   },
 
-  "postCreateCommand": "npm install && echo '✅ PatchPath dev environment ready!' && echo '🚀 Run: npm run dev' && echo '📊 Ports forwarded: 3000, 3001'",
+  "postCreateCommand": "npm install && bash .devcontainer/setup-env.sh && echo '✅ PatchPath dev environment ready!' && echo '🚀 Run: npm run dev' && echo '📊 Ports forwarded: 3000, 3001'",
 
   "customizations": {
     "vscode": {

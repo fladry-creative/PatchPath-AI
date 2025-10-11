@@ -27,42 +27,43 @@
 4. Click: **Create codespace on main**
 5. Wait ~2 minutes for container to build
 
-### Step 2: Add Secrets (First Time Only)
-In the Codespace terminal:
+### Step 2: Add Secrets (First Time Only) ⚡ AUTOMATIC!
 
+**Good News**: `.env.local` is auto-generated from your GitHub Codespace secrets!
+
+**Add secrets via GitHub UI** (easiest):
+1. Go to: https://github.com/settings/codespaces
+2. Click: **New secret**
+3. Add these secrets (one by one):
+   - `ANTHROPIC_API_KEY`
+   - `AZURE_COSMOS_CONNECTION_STRING`
+   - `GEMINI_API_KEY`
+   - `CLERK_SECRET_KEY`
+   - `NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY`
+4. **Rebuild Codespace** to load new secrets:
+   - Command Palette (Cmd/Ctrl+Shift+P)
+   - "Codespaces: Rebuild Container"
+
+**OR** add via Codespace terminal:
 ```bash
-# Add all environment variables
 gh secret set ANTHROPIC_API_KEY --user
-# Paste: sk-ant-api03-...
+# Paste your key when prompted
 
 gh secret set AZURE_COSMOS_CONNECTION_STRING --user
-# Paste: AccountEndpoint=https://...
-
 gh secret set GEMINI_API_KEY --user
-# Paste: AIzaSy...
-
 gh secret set CLERK_SECRET_KEY --user
 gh secret set NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY --user
-gh secret set NEXT_PUBLIC_CLERK_SIGN_IN_URL --user
-gh secret set NEXT_PUBLIC_CLERK_SIGN_UP_URL --user
-gh secret set NEXT_PUBLIC_CLERK_AFTER_SIGN_IN_URL --user
-gh secret set NEXT_PUBLIC_CLERK_AFTER_SIGN_UP_URL --user
+
+# Then rebuild: Command Palette → "Rebuild Container"
 ```
 
-**OR** add via GitHub UI:
-- Go to: Settings → Codespaces → Secrets
-- Add each secret there (easier!)
-
-### Step 3: Create .env.local
+**Check which secrets are loaded:**
 ```bash
-# In Codespace terminal:
-cp .env.example .env.local
-
-# Edit with actual values:
-code .env.local
+bash .devcontainer/setup-env.sh
+# Shows ✅ set vs ❌ missing secrets
 ```
 
-### Step 4: Start Development
+### Step 3: Start Development (secrets auto-loaded!)
 ```bash
 npm run dev
 ```
