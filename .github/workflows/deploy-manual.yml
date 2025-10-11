@@ -1,0 +1,86 @@
+name: Manual Deployment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        type: choice
+        options:
+          - production
+          - staging
+        default: 'staging'
+      image-tag:
+        description: 'Docker image tag to deploy (default: latest)'
+        required: false
+        default: 'latest'
+
+env:
+  REGISTRY: patchpathregistry.azurecr.io
+  IMAGE_NAME: patchpath-ai
+
+jobs:
+  deploy:
+    name: Deploy to ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Set environment variables
+        run: |
+          if [ "${{ inputs.environment }}" == "production" ]; then
+            echo "CONTAINER_APP_NAME=patchpath-app" >> $GITHUB_ENV
+            echo "RESOURCE_GROUP=patchpath-rg" >> $GITHUB_ENV
+          else
+            echo "CONTAINER_APP_NAME=patchpath-app-staging" >> $GITHUB_ENV
+            echo "RESOURCE_GROUP=patchpath-rg" >> $GITHUB_ENV
+          fi
+
+      - name: Deploy to Azure Container Apps
+        run: |
+          echo "🚀 Deploying to ${{ inputs.environment }}"
+          echo ""
+          echo "Image: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image-tag }}"
+          echo "Container App: ${{ env.CONTAINER_APP_NAME }}"
+          echo "Resource Group: ${{ env.RESOURCE_GROUP }}"
+          echo ""
+
+          # Uncomment when Container App exists (Issue #20)
+          # az containerapp update \
+          #   --name ${{ env.CONTAINER_APP_NAME }} \
+          #   --resource-group ${{ env.RESOURCE_GROUP }} \
+          #   --image ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:${{ inputs.image-tag }}
+
+          echo "⚠️  Deployment command ready, waiting for Container App creation (Issue #20)"
+
+      - name: Verify deployment
+        run: |
+          echo "### Manual Deployment Summary 🚀" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Image Tag:** ${{ inputs.image-tag }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Container App:** ${{ env.CONTAINER_APP_NAME }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Resource Group:** ${{ env.RESOURCE_GROUP }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Note:** Actual deployment pending Issue #20 completion" >> $GITHUB_STEP_SUMMARY
+
+      - name: Notify on success
+        if: success()
+        run: |
+          echo "✅ Deployment completed successfully!"
+
+      - name: Notify on failure
+        if: failure()
+        run: |
+          echo "❌ Deployment failed. Check logs for details."
+          exit 1

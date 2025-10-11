@@ -1,0 +1,55 @@
+name: PR Checks
+
+on:
+  pull_request:
+    branches: [main, develop]
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # Quick validation for PRs
+  validate:
+    name: Validate PR
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run linter
+        run: npm run lint
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      - name: Build check
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+      - name: Docker build test
+        run: |
+          docker build --target deps -t patchpath-test:deps .
+          echo "✅ Docker build successful"
+
+      - name: PR Summary
+        run: |
+          echo "### PR Validation ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "All checks passed! PR is ready for review." >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Checks completed:**" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Linting" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Type checking" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Build verification" >> $GITHUB_STEP_SUMMARY
+          echo "- ✅ Docker build test" >> $GITHUB_STEP_SUMMARY
