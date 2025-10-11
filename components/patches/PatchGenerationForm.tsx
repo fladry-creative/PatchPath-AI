@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { type Patch } from '@/types/patch';
 
 interface PatchGenerationFormProps {
@@ -18,6 +18,27 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
   );
   const [generateVariations, setGenerateVariations] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isLoadingRandom, setIsLoadingRandom] = useState(false);
+
+  const handleRandomRack = async () => {
+    setIsLoadingRandom(true);
+    try {
+      const response = await fetch('/api/racks/random');
+      const data = await response.json();
+
+      if (data.success) {
+        setRackUrl(data.rack.url);
+        console.log('Random rack loaded:', data.rack);
+      } else {
+        onError(data.message || 'Failed to load random rack');
+      }
+    } catch (error) {
+      console.error('Random rack error:', error);
+      onError('Failed to load random rack');
+    } finally {
+      setIsLoadingRandom(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -79,11 +100,31 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
           onChange={(e) => setRackUrl(e.target.value)}
           placeholder="https://modulargrid.net/e/racks/view/..."
           className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 focus:outline-none"
-          disabled={isLoading}
+          disabled={isLoading || isLoadingRandom}
         />
-        <p className="mt-1 text-xs text-slate-400">
-          Paste your ModularGrid rack URL (we&apos;ll analyze your modules)
-        </p>
+        <div className="mt-2 flex items-center justify-between">
+          <p className="text-xs text-slate-400">
+            Paste your ModularGrid rack URL (we&apos;ll analyze your modules)
+          </p>
+          <button
+            type="button"
+            onClick={handleRandomRack}
+            disabled={isLoading || isLoadingRandom}
+            className="flex items-center gap-2 rounded-lg border border-purple-500/30 bg-purple-500/10 px-3 py-1.5 text-xs font-medium text-purple-300 transition-all hover:border-purple-500/50 hover:bg-purple-500/20 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {isLoadingRandom ? (
+              <>
+                <span className="h-3 w-3 animate-spin rounded-full border border-purple-300/20 border-t-purple-300"></span>
+                Loading...
+              </>
+            ) : (
+              <>
+                <span>🎲</span>
+                Try Random Rack
+              </>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Intent */}
@@ -98,7 +139,7 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
           placeholder="e.g., Dark ambient drone with evolving textures, rhythmic techno bassline, experimental generative sequence..."
           rows={3}
           className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 focus:outline-none"
-          disabled={isLoading}
+          disabled={isLoading || isLoadingRandom}
         />
       </div>
 
@@ -116,7 +157,7 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
             onChange={(e) => setTechnique(e.target.value)}
             placeholder="e.g., FM, waveshaping"
             className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 focus:outline-none"
-            disabled={isLoading}
+            disabled={isLoading || isLoadingRandom}
           />
         </div>
 
@@ -132,7 +173,7 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
             onChange={(e) => setGenre(e.target.value)}
             placeholder="e.g., techno, ambient"
             className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white placeholder-slate-500 focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 focus:outline-none"
-            disabled={isLoading}
+            disabled={isLoading || isLoadingRandom}
           />
         </div>
 
@@ -148,7 +189,7 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
               setDifficulty(e.target.value as 'beginner' | 'intermediate' | 'advanced')
             }
             className="w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-500/50 focus:outline-none"
-            disabled={isLoading}
+            disabled={isLoading || isLoadingRandom}
           >
             <option value="beginner">Beginner</option>
             <option value="intermediate">Intermediate</option>
@@ -165,7 +206,7 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
           checked={generateVariations}
           onChange={(e) => setGenerateVariations(e.target.checked)}
           className="h-5 w-5 rounded border-white/10 bg-black/30 text-purple-500 focus:ring-2 focus:ring-purple-500/50"
-          disabled={isLoading}
+          disabled={isLoading || isLoadingRandom}
         />
         <label htmlFor="variations" className="text-sm text-slate-200">
           Generate 3 variations (takes a bit longer)
@@ -175,7 +216,7 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={isLoading || !rackUrl.trim() || !intent.trim()}
+        disabled={isLoading || isLoadingRandom || !rackUrl.trim() || !intent.trim()}
         className="w-full rounded-xl bg-gradient-to-r from-purple-500 to-pink-500 px-6 py-4 text-lg font-bold text-white transition-all hover:scale-105 hover:from-purple-600 hover:to-pink-600 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:scale-100"
       >
         {isLoading ? (
@@ -194,7 +235,7 @@ export function PatchGenerationForm({ onPatchGenerated, onError }: PatchGenerati
           type="button"
           onClick={() => setRackUrl('https://modulargrid.net/e/racks/view/2383104')}
           className="text-sm text-purple-400 hover:text-purple-300 hover:underline"
-          disabled={isLoading}
+          disabled={isLoading || isLoadingRandom}
         >
           Use demo rack for testing
         </button>

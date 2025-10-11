@@ -56,5 +56,6 @@ export interface ParsedRack {
     rackId: string;
     userName?: string;
     rackName?: string;
+    hp?: number;
   };
 }
