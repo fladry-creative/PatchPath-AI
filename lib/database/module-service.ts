@@ -54,10 +54,13 @@ export async function upsertModule(
   const moduleId = generateModuleId(module.name!, module.manufacturer!);
   const now = new Date().toISOString();
 
+  // Destructure to exclude id if present in module
+  const { id: _id, ...moduleData } = module as Module;
+
   const moduleDoc: ModuleDocument = {
+    ...moduleData,
     id: moduleId,
     partitionKey: module.manufacturer!,
-    ...(module as Module),
     createdAt: now,
     updatedAt: now,
     source,
@@ -66,7 +69,12 @@ export async function upsertModule(
   };
 
   const { resource } = await container.items.upsert(moduleDoc);
-  return resource as ModuleDocument;
+
+  if (!resource) {
+    throw new Error('Failed to upsert module: no resource returned');
+  }
+
+  return resource as unknown as ModuleDocument;
 }
 
 /**

@@ -8,6 +8,7 @@ import { auth } from '@clerk/nextjs/server';
 import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities } from '@/lib/scraper/analyzer';
 import { generatePatch, generatePatchVariations, isClaudeConfigured } from '@/lib/ai/claude';
+import { type Patch } from '@/types/patch';
 
 export async function POST(request: NextRequest) {
   try {
@@ -65,7 +66,7 @@ export async function POST(request: NextRequest) {
     patch.userId = userId;
 
     // Step 3: Generate variations if requested
-    let variations = [];
+    let variations: Patch[] = [];
     if (generateVariations) {
       console.log('🔄 Step 3: Generating variations...');
       variations = await generatePatchVariations(patch, parsedRack, capabilities, 3);

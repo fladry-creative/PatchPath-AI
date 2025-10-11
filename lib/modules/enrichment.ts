@@ -136,17 +136,16 @@ If you cannot find reliable information, set confidence low and needsReview to t
         data.inputs?.map((input, idx: number) => ({
           id: `in-${idx}`,
           name: input.name,
-          type: input.type,
+          type: input.type.toLowerCase() as 'audio' | 'cv' | 'gate' | 'clock' | 'video',
         })) || [],
       outputs:
         data.outputs?.map((output, idx: number) => ({
           id: `out-${idx}`,
           name: output.name,
-          type: output.type,
+          type: output.type.toLowerCase() as 'audio' | 'cv' | 'gate' | 'clock' | 'video',
         })) || [],
       description: data.description,
       moduleGridUrl: data.moduleGridUrl,
-      manufacturerUrl: data.manufacturerUrl,
     };
 
     console.log(`✅ Found specs for ${moduleData.name} (confidence: ${data.confidence})`);

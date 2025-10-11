@@ -26,7 +26,6 @@ async function testCosmosConnection() {
     // Test connection by getting database account
     const { resource: dbAccount } = await client.getDatabaseAccount();
     console.log('✅ Successfully connected to Cosmos DB');
-    console.log(`   Account: ${dbAccount?.id}`);
     console.log(`   Consistency: ${dbAccount?.consistencyPolicy?.defaultConsistencyLevel}\n`);
 
     // Get or create database

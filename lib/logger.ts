@@ -33,7 +33,7 @@ const format = winston.format.combine(
 );
 
 // Define log transports based on environment
-const transports = [
+const transports: winston.transport[] = [
   // Console output (always enabled)
   new winston.transports.Console({
     format: winston.format.combine(winston.format.colorize(), format),
@@ -66,7 +66,11 @@ const logger = winston.createLogger({
 });
 
 // Helper functions for common logging patterns
-export const logAIRequest = (model: string, operation: string, metadata?: unknown) => {
+export const logAIRequest = (
+  model: string,
+  operation: string,
+  metadata?: Record<string, unknown>
+) => {
   logger.info('AI Request', {
     model,
     operation,
@@ -78,7 +82,7 @@ export const logAIResponse = (
   model: string,
   operation: string,
   duration: number,
-  metadata?: unknown
+  metadata?: Record<string, unknown>
 ) => {
   logger.info('AI Response', {
     model,
@@ -88,7 +92,11 @@ export const logAIResponse = (
   });
 };
 
-export const logDatabaseOperation = (operation: string, collection: string, metadata?: unknown) => {
+export const logDatabaseOperation = (
+  operation: string,
+  collection: string,
+  metadata?: Record<string, unknown>
+) => {
   logger.debug('Database Operation', {
     operation,
     collection,
@@ -96,14 +104,14 @@ export const logDatabaseOperation = (operation: string, collection: string, meta
   });
 };
 
-export const logCacheHit = (key: string, metadata?: unknown) => {
+export const logCacheHit = (key: string, metadata?: Record<string, unknown>) => {
   logger.debug('Cache Hit', {
     key,
     ...metadata,
   });
 };
 
-export const logCacheMiss = (key: string, metadata?: unknown) => {
+export const logCacheMiss = (key: string, metadata?: Record<string, unknown>) => {
   logger.debug('Cache Miss', {
     key,
     ...metadata,
