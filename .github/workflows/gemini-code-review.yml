@@ -1,0 +1,177 @@
+name: Gemini Code Review
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+      - develop
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  gemini-review:
+    name: AI Code Review with Gemini
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Full history for better context
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v47
+        with:
+          files: |
+            **/*.ts
+            **/*.tsx
+            **/*.js
+            **/*.jsx
+          separator: ','
+
+      - name: Gemini Code Review
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/github-script@v7
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const { GoogleGenerativeAI } = require('@google/generative-ai');
+            const fs = require('fs').promises;
+
+            // Initialize Gemini
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({
+              model: 'gemini-2.0-flash-exp',
+              generationConfig: {
+                temperature: 0.3,
+                topP: 0.95,
+                maxOutputTokens: 8192,
+              },
+            });
+
+            // Get PR info
+            const { data: pr } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+            });
+
+            // Get PR diff
+            const { data: diff } = await github.rest.pulls.get({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              mediaType: { format: 'diff' },
+            });
+
+            // Split changed files
+            const changedFiles = process.env.CHANGED_FILES.split(',').filter(f => f.trim());
+
+            if (changedFiles.length === 0) {
+              console.log('No relevant files changed');
+              return;
+            }
+
+            // Build review prompt
+            const prompt = `You are an expert code reviewer for a Next.js 15 + TypeScript + React 19 application called PatchPath AI.
+
+            **Project Context:**
+            - AI-powered modular synthesizer rack analyzer
+            - Uses Claude Sonnet 4.5 for vision analysis
+            - Uses Gemini 2.0 Flash for web scraping
+            - Azure Cosmos DB for caching
+            - Modern October 2025 best practices
+
+            **PR Title:** ${pr.title}
+            **PR Description:** ${pr.body || 'No description'}
+
+            **Changed Files (${changedFiles.length}):**
+            ${changedFiles.map(f => `- ${f}`).join('\n')}
+
+            **Full Diff:**
+            \`\`\`diff
+            ${diff}
+            \`\`\`
+
+            **Review Focus:**
+            1. **Type Safety**: No \`any\` types, proper TypeScript usage
+            2. **React 19 Patterns**: Modern hooks, no legacy patterns
+            3. **Next.js 15**: App Router best practices, proper server/client components
+            4. **Security**: No hardcoded secrets, proper input validation
+            5. **Performance**: Efficient algorithms, proper caching, no memory leaks
+            6. **Code Quality**: Clean code, proper naming, good structure
+            7. **Testing**: Test coverage for new code
+            8. **Error Handling**: Proper try/catch, error logging
+
+            **Output Format:**
+            Provide a structured review with:
+
+            ## 🎯 Summary
+            Brief overview of changes and overall assessment.
+
+            ## ✅ Strengths
+            - What's done well
+            - Good patterns used
+
+            ## ⚠️ Issues Found
+            ### 🔴 Critical (Must Fix)
+            - Security vulnerabilities
+            - Breaking changes
+            - Major bugs
+
+            ### 🟡 Important (Should Fix)
+            - Type safety issues
+            - Performance concerns
+            - Code quality problems
+
+            ### 🟢 Suggestions (Nice to Have)
+            - Optimization opportunities
+            - Style improvements
+
+            ## 📝 Specific Feedback
+            For each file with issues, provide:
+            - File: \`path/to/file.ts\`
+            - Line: (if applicable)
+            - Issue: Description
+            - Fix: Suggested solution
+
+            ## ✅ Approval Status
+            - ✅ **APPROVED** - Ready to merge (minor suggestions only)
+            - ⚠️ **APPROVED WITH COMMENTS** - Can merge but address comments in follow-up
+            - ❌ **CHANGES REQUESTED** - Must fix critical issues before merge
+
+            Be concise but thorough. Focus on actionable feedback.`;
+
+            // Get review from Gemini
+            console.log('Requesting Gemini code review...');
+            const result = await model.generateContent(prompt);
+            const review = result.response.text();
+
+            // Post review as comment
+            await github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: `## 🤖 Gemini AI Code Review
+
+            ${review}
+
+            ---
+            *Powered by Google Gemini 2.0 Flash | [View workflow](https://github.com/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId})*`,
+            });
+
+            console.log('✅ Review posted successfully');
+
+      - name: Review complete
+        if: always()
+        run: |
+          echo "✅ Gemini code review completed"
+          echo "Check PR comments for AI feedback"

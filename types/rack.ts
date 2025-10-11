@@ -3,7 +3,7 @@
  * Represents modular synthesizer racks and their configurations
  */
 
-import { Module, ModuleType } from './module';
+import { type Module, type ModuleType } from './module';
 
 export interface RackCapabilities {
   hasVCO: boolean;
@@ -25,8 +25,8 @@ export interface RackCapabilities {
 export interface RackAnalysis {
   missingFundamentals: ModuleType[];
   suggestions: string[];
-  techniquesPossible: string[];   // e.g., ["FM synthesis", "Subtractive", "Generative"]
-  warnings: string[];             // e.g., ["No VCA detected - you may not be able to control amplitude"]
+  techniquesPossible: string[]; // e.g., ["FM synthesis", "Subtractive", "Generative"]
+  warnings: string[]; // e.g., ["No VCA detected - you may not be able to control amplitude"]
 }
 
 export interface Rack {

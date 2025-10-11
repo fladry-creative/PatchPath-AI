@@ -1,0 +1,76 @@
+# Dependabot Configuration
+# Automatically checks for dependency updates and creates PRs
+# Documentation: https://docs.github.com/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+
+version: 2
+updates:
+  # npm dependencies (package.json)
+  - package-ecosystem: 'npm'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/Denver'
+    open-pull-requests-limit: 5
+    reviewers:
+      - 'fladry-creative'
+    labels:
+      - 'dependencies'
+      - 'automated'
+    commit-message:
+      prefix: 'chore'
+      prefix-development: 'chore'
+      include: 'scope'
+    # Group updates to reduce PR noise
+    groups:
+      # Group all TypeScript-related updates
+      typescript:
+        patterns:
+          - 'typescript'
+          - '@types/*'
+          - 'ts-*'
+      # Group all testing dependencies
+      testing:
+        patterns:
+          - '*jest*'
+          - '@testing-library/*'
+          - 'playwright'
+      # Group all linting/formatting dependencies
+      code-quality:
+        patterns:
+          - 'eslint*'
+          - 'prettier*'
+          - 'husky'
+          - 'lint-staged'
+      # Group Next.js and React together
+      next-react:
+        patterns:
+          - 'next'
+          - 'react'
+          - 'react-dom'
+      # Group AI SDK updates
+      ai-sdks:
+        patterns:
+          - '@anthropic-ai/*'
+          - '@google/*'
+      # Group all minor and patch updates for other dependencies
+      minor-patch:
+        update-types:
+          - 'minor'
+          - 'patch'
+
+  # GitHub Actions workflows
+  - package-ecosystem: 'github-actions'
+    directory: '/'
+    schedule:
+      interval: 'weekly'
+      day: 'monday'
+      time: '09:00'
+      timezone: 'America/Denver'
+    open-pull-requests-limit: 3
+    labels:
+      - 'github-actions'
+      - 'automated'
+    commit-message:
+      prefix: 'ci'

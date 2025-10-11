@@ -43,7 +43,7 @@ async function testCosmosConnection() {
     // Test write operation
     console.log('🧪 Testing write operation...');
     const testModule = {
-      id: 'test-module-' + Date.now(),
+      id: `test-module-${Date.now()}`,
       partitionKey: 'Test',
       name: 'Test Module',
       manufacturer: 'Test',
@@ -68,7 +68,6 @@ async function testCosmosConnection() {
     console.log('╔══════════════════════════════════════════════╗');
     console.log('║   ✅ ALL COSMOS DB TESTS PASSED ✅           ║');
     console.log('╚══════════════════════════════════════════════╝');
-
   } catch (error) {
     console.error('\n❌ Cosmos DB test failed:', error);
     process.exit(1);

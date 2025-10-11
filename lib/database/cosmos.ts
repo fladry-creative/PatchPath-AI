@@ -2,7 +2,7 @@
  * Cosmos DB Client Configuration
  */
 
-import { CosmosClient, Database, Container } from '@azure/cosmos';
+import { CosmosClient, type Database, type Container } from '@azure/cosmos';
 
 // Cosmos DB configuration
 const endpoint = process.env.COSMOS_ENDPOINT || '';
