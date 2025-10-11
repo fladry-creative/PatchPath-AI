@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.65.0",
+    "@azure/cosmos": "^4.6.0",
     "@clerk/nextjs": "^6.33.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
