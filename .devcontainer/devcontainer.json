@@ -70,7 +70,34 @@
   },
 
   "remoteEnv": {
-    "NODE_ENV": "development"
+    "NODE_ENV": "development",
+
+    // ═══════════════════════════════════════════════════════════
+    // CLAUDE CODE PERFORMANCE OPTIMIZATIONS (Hidden Settings!)
+    // ═══════════════════════════════════════════════════════════
+
+    // Performance: Max output tokens for longer responses
+    "CLAUDE_CODE_MAX_OUTPUT_TOKENS": "8192",
+
+    // Thinking modes: Enable extended thinking capability
+    "MAX_THINKING_TOKENS": "10000",
+
+    // MCP: Faster timeouts for containerized environment
+    "MCP_TIMEOUT": "30000",
+    "MCP_TOOL_TIMEOUT": "60000",
+
+    // Reduce non-essential model calls (save tokens)
+    "DISABLE_NON_ESSENTIAL_MODEL_CALLS": "false",
+
+    // Terminal: Keep titles clean
+    "CLAUDE_CODE_DISABLE_TERMINAL_TITLE": "true",
+
+    // Telemetry: Optional - disable if you want
+    "DISABLE_TELEMETRY": "false",
+    "DISABLE_ERROR_REPORTING": "false",
+
+    // Node.js: Performance tuning for Next.js builds
+    "NODE_OPTIONS": "--max-old-space-size=4096"
   },
 
   "mounts": [

@@ -1,0 +1,54 @@
+{
+  // ═══════════════════════════════════════════════════════════
+  // CLAUDE CODE PROJECT SETTINGS (Advanced + Hidden Features)
+  // ═══════════════════════════════════════════════════════════
+  // Based on October 2025 research of undocumented features
+
+  // UI Preferences
+  "spinnerTipsEnabled": false,
+
+  // Auto-approval (requires container/devcontainer for safety)
+  "dangerouslySkipPermissions": true,
+
+  // Performance
+  "maxConcurrentOperations": 10,
+  "aggressiveCaching": true,
+
+  // Output preferences
+  "preferredOutputFormat": "text",
+
+  // Notification channel
+  "preferredNotifChannel": "terminal_bell",
+
+  // Tool Configuration
+  "allowedTools": [
+    "bash",
+    "read",
+    "write",
+    "edit",
+    "grep",
+    "glob",
+    "websearch",
+    "webfetch",
+    "task",
+    "todowrite",
+    "notebookedit"
+  ],
+
+  // Custom environment variables for this project
+  "environmentVariables": {
+    "PATCHPATH_ENV": "development",
+    "ENABLE_TURBOPACK": "true"
+  },
+
+  // MCP Server auto-approve configuration
+  "mcpAutoApprove": {
+    "github-official": ["*"],
+    "brave": ["*"],
+    "playwright": ["*"],
+    "mongodb": ["*"],
+    "aws-core-mcp-server": ["*"],
+    "filesystem": ["*"],
+    "git": ["*"]
+  }
+}
