@@ -1,0 +1,152 @@
+{
+  // ═══════════════════════════════════════════════════════════
+  // DANGER MODE: Maximum Claude Code Aggression in Container
+  // ═══════════════════════════════════════════════════════════
+  // Container environment = No safety nets needed
+  // Let Claude go BATSHIT with maximum autonomy!
+
+  // MODEL: Sonnet 4.5 (Best reasoning + vision + speed)
+  "claudeCode.model": "claude-sonnet-4-5",
+  "claudeCode.maxTokens": 8192,
+  "claudeCode.temperature": 0.0,
+
+  // ═══════════════════════════════════════════════════════════
+  // DANGEROUS PERMISSIONS: Skip ALL confirmations
+  // ═══════════════════════════════════════════════════════════
+
+  // File Operations - YOLO MODE
+  "claudeCode.dangerouslySkipWriteConfirmations": true,
+  "claudeCode.dangerouslySkipReadConfirmations": true,
+  "claudeCode.dangerouslySkipEditConfirmations": true,
+  "claudeCode.dangerouslySkipDeleteConfirmations": true,
+
+  // Bash - LET IT RIP
+  "claudeCode.alwaysAllowBash": true,
+  "claudeCode.dangerouslySkipBashConfirmations": true,
+  "claudeCode.bashAutoApprovePatterns": [
+    "npm.*",
+    "git.*",
+    "az.*",
+    "gh.*",
+    "npx.*",
+    "tsx.*",
+    "curl.*",
+    "docker.*",
+    "node.*",
+    "mkdir.*",
+    "rm.*",
+    "cp.*",
+    "mv.*",
+    "chmod.*",
+    "cat.*",
+    "echo.*",
+    "ls.*",
+    "pwd.*",
+    "cd.*",
+    "grep.*",
+    "find.*",
+    "sed.*",
+    "awk.*"
+  ],
+
+  // Tool Usage - MAXIMUM AUTONOMY
+  "claudeCode.autoApproveTools": [
+    "Read",
+    "Write",
+    "Edit",
+    "MultiEdit",
+    "Bash",
+    "Grep",
+    "Glob",
+    "WebSearch",
+    "WebFetch",
+    "Task",
+    "TodoWrite",
+    "NotebookEdit"
+  ],
+
+  // ═══════════════════════════════════════════════════════════
+  // AGGRESSIVE BEHAVIOR: Maximum initiative
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.autoFixErrors": true,
+  "claudeCode.autoCommit": false, // Keep this false for safety
+  "claudeCode.autoInstallDependencies": true,
+  "claudeCode.autoRunTests": true,
+  "claudeCode.aggressiveCaching": true,
+  "claudeCode.parallelToolExecution": true,
+  "claudeCode.maxConcurrentTools": 10,
+
+  // ═══════════════════════════════════════════════════════════
+  // PERFORMANCE: Maximum speed
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.streamingEnabled": true,
+  "claudeCode.tokenBudget": 200000,
+  "claudeCode.contextWindowOptimization": true,
+  "claudeCode.aggressiveFileSearch": true,
+  "claudeCode.cacheStrategy": "aggressive",
+
+  // ═══════════════════════════════════════════════════════════
+  // WORKSPACE: Container-optimized settings
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.workspaceRules": {
+    "autoDetectFrameworks": true,
+    "respectGitignore": true,
+    "scanNodeModules": false,
+    "maxFileSize": 5000000,
+    "excludePatterns": [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/.git/**",
+      "**/dist/**",
+      "**/build/**"
+    ]
+  },
+
+  // ═══════════════════════════════════════════════════════════
+  // TASK MANAGEMENT: Proactive tracking
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.autoCreateTodos": true,
+  "claudeCode.todoThreshold": 3, // Create todos for 3+ step tasks
+  "claudeCode.trackProgress": true,
+  "claudeCode.updateTodosAutomatically": true,
+
+  // ═══════════════════════════════════════════════════════════
+  // ERROR HANDLING: Aggressive recovery
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.errorRecoveryStrategy": "aggressive",
+  "claudeCode.maxRetries": 3,
+  "claudeCode.autoRollbackOnFailure": false, // Keep changes visible
+  "claudeCode.debugMode": false,
+
+  // ═══════════════════════════════════════════════════════════
+  // DOCKER/CONTAINER AWARENESS
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.containerEnvironment": true,
+  "claudeCode.safetyChecks": "minimal",
+  "claudeCode.assumeIsolation": true,
+
+  // ═══════════════════════════════════════════════════════════
+  // COMMUNICATION: Concise in container
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.verbosity": "normal",
+  "claudeCode.showThinkingProcess": false,
+  "claudeCode.emojiMode": "minimal",
+  "claudeCode.outputStyle": "concise",
+
+  // ═══════════════════════════════════════════════════════════
+  // EXPERIMENTAL: Enable all experimental features
+  // ═══════════════════════════════════════════════════════════
+
+  "claudeCode.experimental.multiFileEdits": true,
+  "claudeCode.experimental.batchOperations": true,
+  "claudeCode.experimental.predictiveExecution": true,
+  "claudeCode.experimental.contextPrefetching": true,
+  "claudeCode.experimental.smartCaching": true
+}

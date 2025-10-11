@@ -37,7 +37,34 @@
         "editor.codeActionsOnSave": {
           "source.fixAll.eslint": true
         },
-        "typescript.tsdk": "node_modules/typescript/lib"
+        "typescript.tsdk": "node_modules/typescript/lib",
+
+        // ═══════════════════════════════════════════════════════════
+        // CLAUDE CODE DANGER MODE - Container Edition
+        // ═══════════════════════════════════════════════════════════
+
+        // Model: Sonnet 4.5 (maximum capability)
+        "claudeCode.model": "claude-sonnet-4-5",
+        "claudeCode.maxTokens": 8192,
+
+        // Skip ALL confirmations (it's a container, YOLO!)
+        "claudeCode.dangerouslySkipWriteConfirmations": true,
+        "claudeCode.dangerouslySkipReadConfirmations": true,
+        "claudeCode.dangerouslySkipEditConfirmations": true,
+        "claudeCode.alwaysAllowBash": true,
+
+        // Auto-approve ALL tools
+        "claudeCode.autoApproveAllTools": true,
+
+        // Maximum autonomy
+        "claudeCode.autoFixErrors": true,
+        "claudeCode.autoInstallDependencies": true,
+        "claudeCode.parallelToolExecution": true,
+        "claudeCode.maxConcurrentTools": 10,
+
+        // Performance
+        "claudeCode.tokenBudget": 200000,
+        "claudeCode.aggressiveCaching": true
       }
     }
   },
