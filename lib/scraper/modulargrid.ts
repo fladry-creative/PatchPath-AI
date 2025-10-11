@@ -81,8 +81,8 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
       timeout: 30000,
     });
 
-    // Wait for rack data to load
-    await page.waitForSelector('.modulegrid-rack', { timeout: 10000 });
+    // Give page time to render (ModularGrid uses client-side rendering)
+    await new Promise(resolve => setTimeout(resolve, 2000));
 
     // Extract embedded JSON data from page
     const rackData = await page.evaluate(() => {

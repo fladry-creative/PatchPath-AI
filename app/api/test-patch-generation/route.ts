@@ -7,6 +7,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities } from '@/lib/scraper/analyzer';
 import { generatePatch, isClaudeConfigured, getModelInfo } from '@/lib/ai/claude';
+import { getMockRack } from '@/lib/scraper/mock-data';
 
 export async function GET(request: NextRequest) {
   // Only allow in development
@@ -31,28 +32,25 @@ export async function GET(request: NextRequest) {
     }
 
     const searchParams = request.nextUrl.searchParams;
-    const url = searchParams.get('url');
+    const useMock = searchParams.get('mock') === 'true';
+    const url = searchParams.get('url') || 'mock';
     const intent = searchParams.get('intent') || 'Create an ambient, evolving soundscape';
     const technique = searchParams.get('technique') || undefined;
     const genre = searchParams.get('genre') || undefined;
 
-    if (!url) {
-      return NextResponse.json(
-        {
-          error: 'URL parameter is required',
-          example: '/api/test-patch-generation?url=https://modulargrid.net/e/racks/view/2383104&intent=dark+ambient+drone',
-          modelInfo: getModelInfo(),
-        },
-        { status: 400 }
-      );
-    }
-
     console.log(`🧪 Testing patch generation...`);
-    console.log(`   Rack: ${url}`);
+    console.log(`   Rack: ${useMock ? 'Mock Data' : url}`);
     console.log(`   Intent: ${intent}`);
 
     // Step 1: Analyze rack
-    const parsedRack = await scrapeModularGridRack(url);
+    let parsedRack;
+
+    if (useMock || !url || url === 'mock') {
+      console.log('📦 Using mock rack data for testing');
+      parsedRack = getMockRack();
+    } else {
+      parsedRack = await scrapeModularGridRack(url);
+    }
     const capabilities = analyzeRackCapabilities(parsedRack.modules);
     const analysis = analyzeRack(parsedRack);
 
