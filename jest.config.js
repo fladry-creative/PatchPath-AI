@@ -6,6 +6,7 @@ const config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+    '^uuid$': require.resolve('uuid'),
   },
   transform: {
     '^.+\\.(ts|tsx)$': [
@@ -17,6 +18,14 @@ const config = {
       },
     ],
   },
+  transformIgnorePatterns: [
+    'node_modules/(?!(uuid|@azure\\/cosmos)/)',
+  ],
+  testPathIgnorePatterns: [
+    '/node_modules/',
+    '/e2e/',
+    '\\.spec\\.ts$',
+  ],
   collectCoverageFrom: [
     'app/**/*.{js,jsx,ts,tsx}',
     'lib/**/*.{js,jsx,ts,tsx}',
