@@ -29,7 +29,8 @@
         "esbenp.prettier-vscode",
         "bradlc.vscode-tailwindcss",
         "ms-azuretools.vscode-docker",
-        "GitHub.copilot"
+        "GitHub.copilot",
+        "gustavoinacio.oled-neon-theme"
       ],
       "settings": {
         "terminal.integrated.defaultProfile.linux": "zsh",

@@ -10,13 +10,15 @@ const nextConfig: NextConfig = {
   // Performance: 12% faster initial loads, 2.5x faster interactions
   experimental: {
     reactCompiler: true, // Auto-memoization, granular optimization
-    turbo: {
-      rules: {
-        // Optimize Turbopack for our stack
-        '*.svg': {
-          loaders: ['@svgr/webpack'],
-          as: '*.js',
-        },
+  },
+
+  // Turbopack Configuration (replaces experimental.turbo in Next.js 15+)
+  turbopack: {
+    rules: {
+      // Optimize Turbopack for our stack
+      '*.svg': {
+        loaders: ['@svgr/webpack'],
+        as: '*.js',
       },
     },
   },
@@ -40,8 +42,7 @@ const nextConfig: NextConfig = {
     ],
   },
 
-  // Build Optimization
-  swcMinify: true,
+  // Build Optimization (swcMinify is now default in Next.js 15+, no need to specify)
   compiler: {
     removeConsole:
       process.env.NODE_ENV === 'production'
