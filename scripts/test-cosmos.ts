@@ -26,7 +26,7 @@ async function testCosmosConnection() {
     // Test connection by getting database account
     const { resource: dbAccount } = await client.getDatabaseAccount();
     console.log('✅ Successfully connected to Cosmos DB');
-    console.log(`   Consistency: ${dbAccount?.consistencyPolicy?.defaultConsistencyLevel}\n`);
+    console.log(`   Consistency: ${(dbAccount?.consistencyPolicy as any)?.defaultConsistencyLevel || 'N/A'}\n`);
 
     // Get or create database
     const { database } = await client.databases.createIfNotExists({ id: 'patchpath' });
