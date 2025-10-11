@@ -13,7 +13,7 @@ const anthropic = new Anthropic({
 });
 
 // Model configuration
-const MODEL = 'claude-3-haiku-20240307'; // Cheap & fast for MVP!
+const MODEL = 'claude-sonnet-4-5'; // Sonnet 4.5: Better quality, still great price
 const MAX_TOKENS = 4096;
 
 /**
@@ -355,8 +355,8 @@ export function getModelInfo() {
     model: MODEL,
     provider: 'Anthropic',
     costPer1MTokens: {
-      input: 0.25,  // $0.25 per million input tokens
-      output: 1.25, // $1.25 per million output tokens
+      input: 3.0,  // Sonnet 4.5: $3 per million input tokens
+      output: 15.0, // $15 per million output tokens
     },
   };
 }

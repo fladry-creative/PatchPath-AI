@@ -1,0 +1,255 @@
+# Basic Subtractive Patch
+
+Generation Time: 26.81s
+
+## Prompt
+
+Create a professional technical schematic diagram for a modular synthesizer patch.
+
+PATCH: Basic Subtractive Patch
+
+MODULES PRESENT:
+1. VCO (Moog)
+2. VCF (Moog Ladder)
+3. ADSR Envelope
+4. VCA
+
+PATCH INSTRUCTIONS:
+1. Patch VCO sawtooth output to VCF audio input
+2. Patch VCF output to VCA audio input
+3. Patch ADSR envelope output to VCF cutoff CV input
+4. Patch ADSR envelope output to VCA CV input
+5. Patch VCA output to mixer/audio out
+6. Patch keyboard gate to ADSR gate input
+
+Signal Flow: VCO → VCF → VCA → Out
+Modulation: ADSR → VCF cutoff + VCA amplitude
+
+STYLE REQUIREMENTS:
+- Professional technical schematic style (like engineering documentation)
+- Clean, minimalist design with light background (white or light gray)
+- Module blocks as rectangles with clear labels showing module names
+- Use color-coded patch cables:
+  🟠 ORANGE = Audio signals (oscillator outputs, filter outputs, VCA outputs)
+  🔵 BLUE = CV (Control Voltage) - modulation sources like envelopes, LFOs
+  🟢 GREEN = Gate/Trigger signals (clock, sequencer gates)
+  🟣 PURPLE = Clock/timing signals
+- Cables should use smooth curved bezier lines (avoid sharp 90-degree angles)
+- Show signal flow direction with subtle arrow indicators
+- Label connection points clearly (e.g., "VCO OUT", "VCF IN", "CUTOFF CV")
+- Add brief annotations explaining key connections or signal flow
+- Professional quality suitable for Instagram/Reddit sharing
+- Ensure legibility - text should be readable when scaled down
+
+IMPORTANT:
+- Keep the design clean and uncluttered
+- Use hierarchy: main signal path prominent, modulation subtle
+- Make it educational: viewer should understand the patch from the diagram
+- Output should be publication-ready quality
+
+Create ONE complete diagram showing all connections described in the patch instructions.
+
+## Response
+
+Here is a professional technical schematic diagram for your Basic Subtractive Patch, designed with clarity, legibility, and a minimalist aesthetic suitable for engineering documentation and social media sharing.
+
+```mermaid
+graph TD
+    %% Styling Definitions %%
+    classDef module rect;
+    classDef gate_signal fill:#4CAF50,stroke:#2E7D32,stroke-width:2px;
+    classDef cv_signal fill:#2196F3,stroke:#1565C0,stroke-width:2px;
+    classDef audio_signal fill:#FF9800,stroke:#E65100,stroke-width:2px;
+    classDef clock_signal fill:#9C27B0,stroke:#6A1B9A,stroke-width:2px;
+
+    %% Modules and Inputs/Outputs %%
+    subgraph Input
+        KB[<div style='font-size:1.2em; font-weight:bold;'>Keyboard Gate</div>]
+    end
+
+    subgraph Core Modules
+        VCO[<div style='font-size:1.2em; font-weight:bold;'>VCO <br/>(Moog)</div>]
+        VCF[<div style='font-size:1.2em; font-weight:bold;'>VCF <br/>(Moog Ladder)</div>]
+        ADSR[<div style='font-size:1.2em; font-weight:bold;'>ADSR <br/>Envelope</div>]
+        VCA[<div style='font-size:1.2em; font-weight:bold;'>VCA</div>]
+    end
+
+    subgraph Output
+        OUT[<div style='font-size:1.2em; font-weight:bold;'>Mixer / <br/>Audio Out</div>]
+    end
+
+    %% Connections and Labels %%
+
+    %% Gate Signal %%
+    KB -- GATE OUT --> ADSR_GATE_IN( )
+    ADSR_GATE_IN -- GATE IN --> ADSR
+    style KB fill:#eceff1,stroke:#90a4ae,stroke-width:2px;
+    linkStyle 0 stroke:#4CAF50,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 1 stroke:#4CAF50,stroke-width:3px,fill:none,curve:basis;
+    
+    %% Audio Signals %%
+    VCO -- Sawtooth OUT --> VCF_AUDIO_IN( )
+    VCF_AUDIO_IN -- AUDIO IN --> VCF
+    VCF -- OUT --> VCA_AUDIO_IN( )
+    VCA_AUDIO_IN -- AUDIO IN --> VCA
+    VCA -- OUT --> OUT_IN( )
+    OUT_IN -- IN --> OUT
+    style VCO fill:#eceff1,stroke:#90a4ae,stroke-width:2px;
+    style VCF fill:#eceff1,stroke:#90a4ae,stroke-width:2px;
+    style VCA fill:#eceff1,stroke:#90a4ae,stroke-width:2px;
+    style OUT fill:#eceff1,stroke:#90a4ae,stroke-width:2px;
+    linkStyle 2 stroke:#FF9800,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 3 stroke:#FF9800,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 4 stroke:#FF9800,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 5 stroke:#FF9800,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 6 stroke:#FF9800,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 7 stroke:#FF9800,stroke-width:3px,fill:none,curve:basis;
+    
+    %% CV Signals %%
+    ADSR -- OUT --> VCF_CUTOFF_CV_IN( )
+    VCF_CUTOFF_CV_IN -- CUTOFF CV --> VCF
+    ADSR -- OUT --> VCA_CV_IN( )
+    VCA_CV_IN -- CV IN --> VCA
+    linkStyle 8 stroke:#2196F3,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 9 stroke:#2196F3,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 10 stroke:#2196F3,stroke-width:3px,fill:none,curve:basis;
+    linkStyle 11 stroke:#2196F3,stroke-width:3px,fill:none,curve:basis;
+
+    %% Annotations %%
+    subgraph Annotations
+        anno_gate[<div style='font-weight:normal; font-size:0.9em; text-align:center;'>Trigger Envelope</div>]
+        anno_vco[<div style='font-weight:normal; font-size:0.9em; text-align:center;'>Main Audio Source</div>]
+        anno_vcf[<div style='font-weight:normal; font-size:0.9em; text-align:center;'>Filtered Audio</div>]
+        anno_cutoff[<div style='font-weight:normal; font-size:0.9em; text-align:center;'>Envelope modulates <br/>filter brightness</div>]
+        anno_vca_cv[<div style='font-weight:normal; font-size:0.9em; text-align:center;'>Envelope shapes volume</div>]
+        anno_output[<div style='font-weight:normal; font-size:0.9em; text-align:center;'>Final Audio Output</div>]
+    end
+    
+    %% Annotation Placement (adjust as needed in visualization tool) %%
+    KB --- anno_gate
+    VCO --- anno_vco
+    VCF_AUDIO_IN --- anno_vcf
+    VCF_CUTOFF_CV_IN --- anno_cutoff
+    VCA_CV_IN --- anno_vca_cv
+    OUT --- anno_output
+    
+    %% Arrow Indicators (Implicit in Mermaid, but explicit if manually drawing) %%
+    %% Mermaid handles arrows automatically on links
+    
+    %% Global Styling %%
+    accTitle: Modular Synthesizer Patch: Basic Subtractive Patch
+    accDescr: Schematic diagram showing the connections for a basic subtractive synthesizer patch using VCO, VCF, ADSR, and VCA modules.
+    
+    %% Title for the entire diagram %%
+    style root fill:#ffffff;
+```
+
+```
+graph TD
+    %% Styling Definitions for MermaidJS for professional look %%
+    %% Module Blocks (Rectangles)
+    classDef module_block fill:#f8f8f8,stroke:#cccccc,stroke-width:2px,rx:5px,ry:5px,font-family: 'Inter', sans-serif,font-size:16px,text-align:center;
+    %% Connection Points (Small Circles/Dots, invisible in Mermaid but conceptually represented by text labels)
+    classDef port_label font-size:12px,font-family:'Inter', sans-serif,fill:#333;
+    %% Annotation Labels
+    classDef annotation_text font-size:12px,font-style:italic,fill:#666,font-family:'Inter', sans-serif,text-align:center;
+    
+    %% Cable Colors with subtle arrows
+    %% Orange for Audio
+    %% Blue for CV
+    %% Green for Gate
+    %% Purple for Clock (not used here but for reference)
+
+    %% Module Definitions %%
+    subgraph Input_Sources
+        KB[<div style='font-weight:bold; font-size:1.1em;'>Keyboard Gate</div>]
+    end
+    
+    subgraph Core_Synthesizer_Path
+        VCO_M[<div style='font-weight:bold; font-size:1.1em;'>VCO<br/>(Moog)</div>]:::module_block
+        VCF_M[<div style='font-weight:bold; font-size:1.1em;'>VCF<br/>(Moog Ladder)</div>]:::module_block
+        ADSR_M[<div style='font-weight:bold; font-size:1.1em;'>ADSR<br/>Envelope</div>]:::module_block
+        VCA_M[<div style='font-weight:bold; font-size:1.1em;'>VCA</div>]:::module_block
+    end
+
+    subgraph Output_Destination
+        OUT_M[<div style='font-weight:bold; font-size:1.1em;'>Mixer /<br/>Audio Out</div>]:::module_block
+    end
+
+    %% Connections %%
+    
+    %% Gate Signal (Green)
+    KB -- Gate Out --> KB_ADSR_GATE_IN
+    KB_ADSR_GATE_IN(( )) -- Gate In --> ADSR_M
+    linkStyle 0 stroke:#4CAF50,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 1 stroke:#4CAF50,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+
+    %% Audio Signals (Orange)
+    VCO_M -- Sawtooth Out --> VCO_VCF_AUDIO_IN
+    VCO_VCF_AUDIO_IN(( )) -- Audio In --> VCF_M
+    VCF_M -- Out --> VCF_VCA_AUDIO_IN
+    VCF_VCA_AUDIO_IN(( )) -- Audio In --> VCA_M
+    VCA_M -- Out --> VCA_OUT_IN
+    VCA_OUT_IN(( )) -- In --> OUT_M
+    linkStyle 2 stroke:#FF9800,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 3 stroke:#FF9800,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 4 stroke:#FF9800,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 5 stroke:#FF9800,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 6 stroke:#FF9800,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 7 stroke:#FF9800,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+
+    %% CV Signals (Blue)
+    ADSR_M -- Out --> ADSR_VCF_CUTOFF_CV_IN
+    ADSR_VCF_CUTOFF_CV_IN(( )) -- Cutoff CV --> VCF_M
+    ADSR_M -- Out --> ADSR_VCA_CV_IN
+    ADSR_VCA_CV_IN(( )) -- CV In --> VCA_M
+    linkStyle 8 stroke:#2196F3,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 9 stroke:#2196F3,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 10 stroke:#2196F3,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+    linkStyle 11 stroke:#2196F3,stroke-width:3px,fill:none,stroke-linecap:round,stroke-linejoin:round;
+
+    %% Annotations %%
+    subgraph Explanations
+        anno_gate_trigger[Trigger envelope]:::annotation_text
+        anno_main_audio[Main audio source]:::annotation_text
+        anno_filtered_audio[Filtered audio]:::annotation_text
+        anno_filter_mod[Envelope modulates<br/>filter brightness]:::annotation_text
+        anno_vca_mod[Envelope shapes volume]:::annotation_text
+        anno_final_out[Final audio output]:::annotation_text
+    end
+
+    %% Positioning annotations near relevant connections (Mermaid's exact positioning is limited, so this is conceptual) %%
+    KB_ADSR_GATE_IN --- anno_gate_trigger
+    VCO_VCF_AUDIO_IN --- anno_main_audio
+    VCF_VCA_AUDIO_IN --- anno_filtered_audio
+    ADSR_VCF_CUTOFF_CV_IN --- anno_filter_mod
+    ADSR_VCA_CV_IN --- anno_vca_mod
+    VCA_OUT_IN --- anno_final_out
+    
+    %% Diagram Title (placed above the graph in actual rendering) %%
+    accTitle: Modular Synthesizer Patch: Basic Subtractive Patch
+    accDescr: A professional technical schematic diagram detailing the connections for a basic subtractive synthesizer patch. It includes a Moog VCO, Moog Ladder VCF, ADSR Envelope, and VCA. Color-coded cables represent audio (orange), control voltage (blue), and gate signals (green).
+    
+    %% General Diagram Layout (Mermaid tries to optimize, manual layout might be needed for perfect aesthetics) %%
+    direction LR %% Left to Right flow for main signal path
+    
+    style KB fill:#e0e0e0,stroke:#9e9e9e,stroke-width:2px;
+    style OUT_M fill:#e0e0e0,stroke:#9e9e9e,stroke-width:2px;
+```
+
+**Key Features of the Diagram:**
+
+*   **Clean Layout:** Modules are arranged logically with a clear left-to-right signal flow for the audio path.
+*   **Module Blocks:** Rectangular blocks for each module with bold, clear labels (e.g., "VCO (Moog)").
+*   **Color-Coded Cables:**
+    *   🟠 **ORANGE** for Audio (VCO out, VCF out, VCA out).
+    *   🔵 **BLUE** for CV (ADSR out to VCF cutoff and VCA CV).
+    *   🟢 **GREEN** for Gate (Keyboard Gate to ADSR gate in).
+*   **Smooth Curved Lines:** Cables use `curve:basis` in Mermaid, which renders as smooth, rounded lines, avoiding sharp angles.
+*   **Subtle Arrows:** Mermaid implicitly adds arrows to show signal direction.
+*   **Clearly Labeled Connections:** Text like "Sawtooth Out," "Audio In," "Cutoff CV," "Gate In," etc., are placed at the connection points.
+*   **Informative Annotations:** Brief explanations are placed near key connections to enhance understanding.
+*   **Minimalist Design:** Light background, clean lines, and uncluttered presentation.
+*   **Educational:** The diagram clearly illustrates the patch's signal and modulation flow, making it easy to understand how the sound is generated and shaped.
+
+This output uses Mermaid syntax, which can be rendered into a high-quality SVG or PNG image using various online tools (e.g., Mermaid Live Editor, VS Code extensions) to produce the publication-ready graphic.

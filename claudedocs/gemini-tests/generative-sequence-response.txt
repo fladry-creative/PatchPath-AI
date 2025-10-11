@@ -1,0 +1,195 @@
+# Generative Sequence
+
+Generation Time: 24.30s
+
+## Prompt
+
+Create a professional technical schematic diagram for a modular synthesizer patch.
+
+PATCH: Generative Sequence
+
+MODULES PRESENT:
+1. Clock
+2. Random
+3. Sample & Hold
+4. Quantizer
+5. VCO
+6. VCF
+7. VCA
+8. ADSR
+
+PATCH INSTRUCTIONS:
+1. Clock output to Sample & Hold trigger
+2. Random CV to Sample & Hold input
+3. Sample & Hold output to Quantizer input
+4. Quantizer output to VCO 1V/oct input
+5. VCO output to VCF input
+6. VCF output to VCA input
+7. Clock output to ADSR gate
+8. ADSR output to VCA CV
+9. VCA output to audio out
+
+Random melodies, clock-synced rhythms
+
+STYLE REQUIREMENTS:
+- Professional technical schematic style (like engineering documentation)
+- Clean, minimalist design with light background (white or light gray)
+- Module blocks as rectangles with clear labels showing module names
+- Use color-coded patch cables:
+  🟠 ORANGE = Audio signals (oscillator outputs, filter outputs, VCA outputs)
+  🔵 BLUE = CV (Control Voltage) - modulation sources like envelopes, LFOs
+  🟢 GREEN = Gate/Trigger signals (clock, sequencer gates)
+  🟣 PURPLE = Clock/timing signals
+- Cables should use smooth curved bezier lines (avoid sharp 90-degree angles)
+- Show signal flow direction with subtle arrow indicators
+- Label connection points clearly (e.g., "VCO OUT", "VCF IN", "CUTOFF CV")
+- Add brief annotations explaining key connections or signal flow
+- Professional quality suitable for Instagram/Reddit sharing
+- Ensure legibility - text should be readable when scaled down
+
+IMPORTANT:
+- Keep the design clean and uncluttered
+- Use hierarchy: main signal path prominent, modulation subtle
+- Make it educational: viewer should understand the patch from the diagram
+- Output should be publication-ready quality
+
+Create ONE complete diagram showing all connections described in the patch instructions.
+
+## Response
+
+```json
+{
+  "diagram": {
+    "title": "Generative Sequence Patch",
+    "description": "Random melodies, clock-synced rhythms",
+    "background_color": "#F8F8F8",
+    "font_family": "Arial, sans-serif",
+    "modules": [
+      {
+        "id": "clock",
+        "name": "CLOCK",
+        "type": "source",
+        "position": {"x": 100, "y": 200},
+        "size": {"width": 120, "height": 80},
+        "outputs": [
+          {"id": "out", "label": "OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      },
+      {
+        "id": "random",
+        "name": "RANDOM",
+        "type": "source",
+        "position": {"x": 100, "y": 400},
+        "size": {"width": 120, "height": 80},
+        "outputs": [
+          {"id": "cv_out", "label": "CV OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      },
+      {
+        "id": "s_and_h",
+        "name": "SAMPLE & HOLD",
+        "type": "processor",
+        "position": {"x": 300, "y": 300},
+        "size": {"width": 160, "height": 120},
+        "inputs": [
+          {"id": "trigger_in", "label": "TRIGGER", "position": {"x": "left", "y": 0.3}},
+          {"id": "cv_in", "label": "INPUT", "position": {"x": "left", "y": 0.7}}
+        ],
+        "outputs": [
+          {"id": "out", "label": "OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      },
+      {
+        "id": "quantizer",
+        "name": "QUANTIZER",
+        "type": "processor",
+        "position": {"x": 520, "y": 300},
+        "size": {"width": 140, "height": 80},
+        "inputs": [
+          {"id": "in", "label": "INPUT", "position": {"x": "left", "y": 0.5}}
+        ],
+        "outputs": [
+          {"id": "out", "label": "OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      },
+      {
+        "id": "vco",
+        "name": "VCO",
+        "type": "sound_source",
+        "position": {"x": 750, "y": 150},
+        "size": {"width": 120, "height": 100},
+        "inputs": [
+          {"id": "1v_oct", "label": "1V/OCT", "position": {"x": "left", "y": 0.3}}
+        ],
+        "outputs": [
+          {"id": "out", "label": "OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      },
+      {
+        "id": "vcf",
+        "name": "VCF",
+        "type": "processor",
+        "position": {"x": 950, "y": 150},
+        "size": {"width": 120, "height": 100},
+        "inputs": [
+          {"id": "audio_in", "label": "IN", "position": {"x": "left", "y": 0.5}}
+        ],
+        "outputs": [
+          {"id": "audio_out", "label": "OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      },
+      {
+        "id": "adsr",
+        "name": "ADSR",
+        "type": "modulator",
+        "position": {"x": 520, "y": 500},
+        "size": {"width": 140, "height": 80},
+        "inputs": [
+          {"id": "gate_in", "label": "GATE", "position": {"x": "left", "y": 0.5}}
+        ],
+        "outputs": [
+          {"id": "out", "label": "OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      },
+      {
+        "id": "vca",
+        "name": "VCA",
+        "type": "processor",
+        "position": {"x": 1150, "y": 250},
+        "size": {"width": 120, "height": 120},
+        "inputs": [
+          {"id": "audio_in", "label": "IN", "position": {"x": "left", "y": 0.3}},
+          {"id": "cv_in", "label": "CV IN", "position": {"x": "left", "y": 0.7}}
+        ],
+        "outputs": [
+          {"id": "audio_out", "label": "AUDIO OUT", "position": {"x": "right", "y": 0.5}}
+        ]
+      }
+    ],
+    "cables": [
+      {"from": "clock.out", "to": "s_and_h.trigger_in", "color": "green", "type": "gate", "annotation": "Clock output triggers S&H"},
+      {"from": "random.cv_out", "to": "s_and_h.cv_in", "color": "blue", "type": "cv", "annotation": "Random voltage input to S&H"},
+      {"from": "s_and_h.out", "to": "quantizer.in", "color": "blue", "type": "cv", "annotation": "Sampled random CV for pitch"},
+      {"from": "quantizer.out", "to": "vco.1v_oct", "color": "blue", "type": "cv", "annotation": "Quantized pitch CV to VCO"},
+      {"from": "vco.out", "to": "vcf.audio_in", "color": "orange", "type": "audio"},
+      {"from": "vcf.audio_out", "to": "vca.audio_in", "color": "orange", "type": "audio"},
+      {"from": "clock.out", "to": "adsr.gate_in", "color": "green", "type": "gate", "annotation": "Clock output gates ADSR"},
+      {"from": "adsr.out", "to": "vca.cv_in", "color": "blue", "type": "cv", "annotation": "ADSR shapes VCA amplitude"},
+      {"from": "vca.audio_out", "to": "output", "color": "orange", "type": "audio", "target_label": "AUDIO OUT"}
+    ],
+    "annotations": [
+      {"text": "Samples the random CV on each clock trigger, creating stepped random voltages.", "position": {"x": 300, "y": 450}, "align": "center", "for_module": "s_and_h", "font_size": 12},
+      {"text": "Quantizes incoming CV to a musical scale, generating melodic sequences.", "position": {"x": 590, "y": 400}, "align": "center", "for_module": "quantizer", "font_size": 12},
+      {"text": "Generates a gate signal for each clock pulse.", "position": {"x": 160, "y": 140}, "align": "center", "for_module": "clock", "font_size": 12},
+      {"text": "Creates unquantized random voltage fluctuations.", "position": {"x": 160, "y": 500}, "align": "center", "for_module": "random", "font_size": 12},
+      {"text": "Controls amplitude of the audio signal, shaped by the ADSR envelope.", "position": {"x": 1200, "y": 420}, "align": "center", "for_module": "vca", "font_size": 12}
+    ],
+    "palette": {
+      "audio": "#FF8C00",   
+      "cv": "#4169E1",     
+      "gate": "#32CD32",    
+      "clock": "#8A2BE2"   
+    }
+  }
+}
+```
