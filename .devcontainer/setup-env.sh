@@ -1,6 +1,17 @@
 #!/bin/bash
 # Auto-generate .env.local from GitHub Codespace secrets
+# AND install all necessary dependencies for PatchPath AI
 
+set -e  # Exit on error
+
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "🚀 PatchPath AI - Complete Environment Setup"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# ═══════════════════════════════════════════════════
+# 1. Environment Variables
+# ═══════════════════════════════════════════════════
 echo "🔐 Setting up environment from Codespace secrets..."
 
 # Create .env.local from secrets
@@ -27,11 +38,48 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 NODE_ENV=development
 EOF
 
-# Check which secrets are set
-echo ""
 echo "✅ .env.local created"
 echo ""
-echo "Secret Status:"
+
+# ═══════════════════════════════════════════════════
+# 2. Install Chrome for Puppeteer (ModularGrid scraping)
+# ═══════════════════════════════════════════════════
+echo "🌐 Installing Chrome for Puppeteer..."
+
+if [ -d "/home/node/.cache/puppeteer/chrome" ]; then
+  echo "  ℹ️  Chrome already installed, skipping..."
+else
+  npx puppeteer browsers install chrome
+  echo "  ✅ Chrome installed"
+fi
+echo ""
+
+# ═══════════════════════════════════════════════════
+# 3. Install Playwright Browsers (for E2E testing)
+# ═══════════════════════════════════════════════════
+echo "🎭 Installing Playwright browsers..."
+
+if npx playwright --version &> /dev/null; then
+  npx playwright install --with-deps chromium
+  echo "  ✅ Playwright browsers installed"
+else
+  echo "  ℹ️  Playwright not found, will install on first test run"
+fi
+echo ""
+
+# ═══════════════════════════════════════════════════
+# 4. Verify Node & NPM versions
+# ═══════════════════════════════════════════════════
+echo "📦 Verifying toolchain..."
+echo "  Node: $(node --version)"
+echo "  NPM: $(npm --version)"
+echo "  Git: $(git --version)"
+echo ""
+
+# ═══════════════════════════════════════════════════
+# 5. Check Secret Status
+# ═══════════════════════════════════════════════════
+echo "🔑 Secret Status:"
 
 check_secret() {
   if [ -z "${!1}" ]; then
@@ -53,6 +101,9 @@ check_secret "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY" || MISSING=$((MISSING+1))
 
 echo ""
 
+# ═══════════════════════════════════════════════════
+# 6. Final Status
+# ═══════════════════════════════════════════════════
 if [ $MISSING -gt 0 ]; then
   echo "⚠️  $MISSING secrets are missing!"
   echo ""
@@ -66,7 +117,13 @@ if [ $MISSING -gt 0 ]; then
   echo "gh secret set SECRET_NAME --user"
   echo ""
 else
-  echo "🎉 All secrets configured! Ready to develop."
+  echo "🎉 All secrets configured!"
 fi
 
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo "✅ Environment setup complete!"
+echo ""
+echo "🚀 Ready to develop! Run: npm run dev"
+echo "📊 Run tests with: npm test"
+echo "🎭 E2E tests: npm run test:e2e"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
