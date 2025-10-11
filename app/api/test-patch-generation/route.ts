@@ -8,6 +8,7 @@ import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities } from '@/lib/scraper/analyzer';
 import { generatePatch, isClaudeConfigured, getModelInfo } from '@/lib/ai/claude';
 import { getMockRack } from '@/lib/scraper/mock-data';
+import logger from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   // Only allow in development
@@ -38,15 +39,18 @@ export async function GET(request: NextRequest) {
     const technique = searchParams.get('technique') || undefined;
     const genre = searchParams.get('genre') || undefined;
 
-    console.log(`🧪 Testing patch generation...`);
-    console.log(`   Rack: ${useMock ? 'Mock Data' : url}`);
-    console.log(`   Intent: ${intent}`);
+    logger.info('🧪 Testing patch generation', {
+      rack: useMock ? 'Mock Data' : url,
+      intent,
+      technique,
+      genre
+    });
 
     // Step 1: Analyze rack
     let parsedRack;
 
     if (useMock || !url || url === 'mock') {
-      console.log('📦 Using mock rack data for testing');
+      logger.info('📦 Using mock rack data for testing');
       parsedRack = getMockRack();
     } else {
       parsedRack = await scrapeModularGridRack(url);
@@ -88,10 +92,13 @@ export async function GET(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('❌ Test patch generation failed:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Test patch generation failed', {
+      error: errorMessage,
+      stack: errorStack
+    });
 
     return NextResponse.json(
       {

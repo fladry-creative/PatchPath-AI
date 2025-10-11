@@ -6,6 +6,7 @@
 import { type NextRequest, NextResponse } from 'next/server';
 import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities, generateRackSummary } from '@/lib/scraper/analyzer';
+import logger from '@/lib/logger';
 
 export async function GET(request: NextRequest) {
   // Only allow in development
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    console.log(`🧪 Testing scraper with URL: ${url}`);
+    logger.info('🧪 Testing scraper', { url });
 
     // Scrape and analyze
     const parsedRack = await scrapeModularGridRack(url);
@@ -54,10 +55,13 @@ export async function GET(request: NextRequest) {
       rawData: parsedRack, // Include full data for debugging
     });
   } catch (error: unknown) {
-    console.error('❌ Test scraper failed:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Test scraper failed', {
+      error: errorMessage,
+      stack: errorStack
+    });
 
     return NextResponse.json(
       {

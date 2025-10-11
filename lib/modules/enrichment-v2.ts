@@ -6,6 +6,7 @@
 import { type Module, type ModuleType } from '@/types/module';
 import { findModule, upsertModule, incrementModuleUsage } from '@/lib/database/module-service';
 import { type VisionModule } from '@/lib/vision/rack-analyzer';
+import logger from '@/lib/logger';
 
 export interface EnrichmentResult {
   module: Partial<Module>;
@@ -65,7 +66,14 @@ export async function enrichModuleWithCache(visionModule: VisionModule): Promise
     };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`Enrichment failed for ${visionModule.name}:`, errorMessage);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('Enrichment failed', {
+      moduleName: visionModule.name,
+      manufacturer: visionModule.manufacturer,
+      error: errorMessage,
+      stack: errorStack
+    });
 
     // Fallback: return vision data as-is
     return {
@@ -91,7 +99,11 @@ export async function enrichModuleWithCache(visionModule: VisionModule): Promise
 export async function enrichModulesBatch(
   visionModules: VisionModule[]
 ): Promise<EnrichmentResult[]> {
-  console.log(`📦 Enriching ${visionModules.length} modules with database caching...`);
+  const startTime = Date.now();
+
+  logger.info('📦 Starting batch enrichment', {
+    moduleCount: visionModules.length
+  });
 
   const results: EnrichmentResult[] = [];
   let cacheHits = 0;
@@ -118,10 +130,16 @@ export async function enrichModulesBatch(
     await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
-  const cacheHitRate = ((cacheHits / (cacheHits + cacheMisses)) * 100).toFixed(1);
-  console.log(
-    `✅ Enrichment complete: ${cacheHits} cache hits, ${cacheMisses} misses (${cacheHitRate}% hit rate)`
-  );
+  const duration = Date.now() - startTime;
+  const cacheHitRate = (cacheHits / (cacheHits + cacheMisses)) * 100;
+
+  logger.info('✅ Batch enrichment complete', {
+    totalModules: results.length,
+    cacheHits,
+    cacheMisses,
+    hitRate: cacheHitRate,
+    duration
+  });
 
   return results;
 }

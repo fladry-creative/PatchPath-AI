@@ -6,6 +6,7 @@
 import puppeteer, { type Browser, type Page } from 'puppeteer';
 import { type Module, type ModuleType } from '@/types/module';
 import { type ParsedRack, type RackRow } from '@/types/rack';
+import logger from '@/lib/logger';
 
 // Module type detection patterns
 const MODULE_TYPE_PATTERNS: Record<string, ModuleType> = {
@@ -71,7 +72,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     // Set user agent to avoid detection
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
 
-    console.log(`🕷️  Scraping: ${url}`);
+    logger.info('🕷️  Scraping ModularGrid rack', { url });
 
     // Navigate to page
     await page.goto(url, {
@@ -98,7 +99,9 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
             try {
               return JSON.parse(rackMatch[1]);
             } catch (e) {
-              console.error('Failed to parse rack JSON:', e);
+              logger.error('Failed to parse rack JSON', {
+                error: e instanceof Error ? e.message : 'Unknown error'
+              });
             }
           }
 
@@ -108,7 +111,9 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
             try {
               return { modules: JSON.parse(modulesMatch[1]) };
             } catch (e) {
-              console.error('Failed to parse modules JSON:', e);
+              logger.error('Failed to parse modules JSON', {
+                error: e instanceof Error ? e.message : 'Unknown error'
+              });
             }
           }
         }
@@ -141,7 +146,9 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
       return { modules };
     });
 
-    console.log(`✅ Found ${rackData?.modules?.length || 0} modules`);
+    logger.info('✅ Modules extracted from page', {
+      moduleCount: rackData?.modules?.length || 0
+    });
 
     interface RawModuleData {
       id?: string;
@@ -181,8 +188,12 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
           negative12V: m.power?.negative12V || m.mANegative12V || undefined,
           positive5V: m.power?.positive5V || m.mA5V || undefined,
         },
-        inputs: [], // TODO: Parse from module details
-        outputs: [], // TODO: Parse from module details
+        // Note: Module I/O parsing not implemented
+        // ModularGrid doesn't expose structured I/O data in the embedded JSON
+        // Would require scraping individual module detail pages (rate limit concerns + brittle selectors)
+        // Current approach: Empty arrays, enrichment services can add I/O data later from ModularGrid API
+        inputs: [],
+        outputs: [],
         description: m.description,
         moduleGridUrl: m.url,
         position: m.position || { row: m.row || 0, column: m.column || 0 },
@@ -229,11 +240,24 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
       },
     };
 
-    console.log(`🎸 Successfully scraped rack: ${rackName} (${modules.length} modules)`);
+    logger.info('🎸 Successfully scraped rack', {
+      rackId,
+      rackName,
+      moduleCount: modules.length,
+      rowCount: rows.length
+    });
 
     return parsedRack;
   } catch (error) {
-    console.error('❌ Scraping failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Scraping failed', {
+      url,
+      error: errorMessage,
+      stack: errorStack
+    });
+
     throw new Error(`Failed to scrape ModularGrid rack: ${error}`);
   } finally {
     if (browser) {
@@ -245,10 +269,16 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
 /**
  * Get module details from ModularGrid API (if available)
  * This is a placeholder for future API integration
+ *
+ * Note: No official ModularGrid API available
+ * ModularGrid does not provide a public API for rack or module data
+ * Current approach: Respectful web scraping with rate limiting and caching
+ * Future: If ModularGrid releases an API, switch to API-first with scraping fallback
+ * See: https://www.modulargrid.net/forum (monitor for API announcements)
  */
 export async function getModuleDetails(_moduleId: string): Promise<Module | null> {
-  // TODO: Implement ModularGrid API call if/when available
-  // For now, rely on scraping from rack page
+  // No API available - rely on scraping from rack page
+  // If API becomes available: implement proper authentication, rate limiting, and error handling
   return null;
 }
 

@@ -7,6 +7,8 @@ import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { scrapeModularGridRack, isValidModularGridUrl } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities, generateRackSummary } from '@/lib/scraper/analyzer';
+import logger from '@/lib/logger';
+import { saveRack } from '@/lib/database/rack-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -35,7 +37,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🔍 Analyzing rack for user ${userId}: ${url}`);
+    logger.info('🔍 Analyzing rack', { userId, url });
 
     // Scrape rack data
     const parsedRack = await scrapeModularGridRack(url);
@@ -45,8 +47,21 @@ export async function POST(request: NextRequest) {
     const analysis = analyzeRack(parsedRack);
     const summary = generateRackSummary(parsedRack, analysis);
 
-    // TODO: Save to Cosmos DB
-    // await saveRackToDatabase(userId, parsedRack, capabilities, analysis);
+    // Save rack to database cache (graceful degradation if DB unavailable)
+    try {
+      await saveRack(parsedRack, capabilities, analysis);
+      logger.info('💾 Rack saved to database cache', {
+        rackId: parsedRack.metadata.rackId,
+        url: parsedRack.url,
+      });
+    } catch (error) {
+      logger.error('⚠️  Failed to save rack to database cache', {
+        rackId: parsedRack.metadata.rackId,
+        url: parsedRack.url,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      // Continue - rack analysis succeeded even if save failed
+    }
 
     // Return analysis
     return NextResponse.json({
@@ -65,9 +80,13 @@ export async function POST(request: NextRequest) {
       summary,
     });
   } catch (error: unknown) {
-    console.error('❌ Rack analysis failed:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Rack analysis failed', {
+      error: errorMessage,
+      stack: errorStack
+    });
 
     return NextResponse.json(
       {

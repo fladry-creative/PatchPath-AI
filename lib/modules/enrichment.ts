@@ -5,6 +5,7 @@
 
 import Anthropic from '@anthropic-ai/sdk';
 import { type Module, type ModuleType } from '@/types/module';
+import logger from '@/lib/logger';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -28,7 +29,11 @@ export async function enrichModuleData(
     ? `${manufacturer} ${moduleName} eurorack specifications`
     : `${moduleName} eurorack specifications`;
 
-  console.log(`🔎 Searching for module: ${searchQuery}`);
+  logger.info('🔎 Searching for module specifications', {
+    moduleName,
+    manufacturer,
+    searchQuery
+  });
 
   // Use Claude with search capability to find module specs
   const systemPrompt = `You are an expert in Eurorack modular synthesizers.
@@ -148,7 +153,12 @@ If you cannot find reliable information, set confidence low and needsReview to t
       moduleGridUrl: data.moduleGridUrl,
     };
 
-    console.log(`✅ Found specs for ${moduleData.name} (confidence: ${data.confidence})`);
+    logger.info('✅ Module specifications found', {
+      moduleName: moduleData.name,
+      manufacturer: moduleData.manufacturer,
+      confidence: data.confidence,
+      type: moduleData.type
+    });
 
     return {
       module: moduleData,
@@ -158,7 +168,14 @@ If you cannot find reliable information, set confidence low and needsReview to t
     };
   } catch (error: unknown) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-    console.error(`❌ Failed to enrich module ${moduleName}:`, errorMessage);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Failed to enrich module', {
+      moduleName,
+      manufacturer,
+      error: errorMessage,
+      stack: errorStack
+    });
 
     // Return partial data
     return {
@@ -183,7 +200,9 @@ If you cannot find reliable information, set confidence low and needsReview to t
 export async function enrichModules(
   modules: Array<{ name: string; manufacturer?: string }>
 ): Promise<ModuleSearchResult[]> {
-  console.log(`📦 Batch enriching ${modules.length} modules...`);
+  logger.info('📦 Starting batch module enrichment', {
+    moduleCount: modules.length
+  });
 
   // Process in parallel with rate limiting
   const results: ModuleSearchResult[] = [];
@@ -196,7 +215,14 @@ export async function enrichModules(
       // Rate limit: wait 500ms between requests
       await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
-      console.error(`Failed to enrich ${moduleInfo.name}:`, error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+      logger.error('Failed to enrich module in batch', {
+        moduleName: moduleInfo.name,
+        manufacturer: moduleInfo.manufacturer,
+        error: errorMessage
+      });
+
       results.push({
         module: {
           name: moduleInfo.name,
@@ -213,7 +239,11 @@ export async function enrichModules(
     }
   }
 
-  console.log(`✅ Batch enrichment complete: ${results.length} modules processed`);
+  logger.info('✅ Batch enrichment complete', {
+    totalProcessed: results.length,
+    successCount: results.filter(r => r.confidence > 0.5).length,
+    needsReview: results.filter(r => r.needsReview).length
+  });
 
   return results;
 }

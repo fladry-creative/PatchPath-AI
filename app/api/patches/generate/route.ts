@@ -9,6 +9,8 @@ import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities } from '@/lib/scraper/analyzer';
 import { generatePatch, generatePatchVariations, isClaudeConfigured } from '@/lib/ai/claude';
 import { type Patch } from '@/types/patch';
+import logger from '@/lib/logger';
+import { savePatch } from '@/lib/database/patch-service';
 
 export async function POST(request: NextRequest) {
   try {
@@ -44,18 +46,26 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`🎨 Patch generation request from user ${userId}`);
-    console.log(`   Rack: ${rackUrl}`);
-    console.log(`   Intent: ${intent}`);
+    const startTime = Date.now();
+
+    logger.info('🎨 Patch generation request received', {
+      userId,
+      rackUrl,
+      intent,
+      technique,
+      genre,
+      difficulty,
+      generateVariations
+    });
 
     // Step 1: Scrape rack
-    console.log('📥 Step 1: Analyzing rack...');
+    logger.info('📥 Step 1: Analyzing rack');
     const parsedRack = await scrapeModularGridRack(rackUrl);
     const capabilities = analyzeRackCapabilities(parsedRack.modules);
     const analysis = analyzeRack(parsedRack);
 
     // Step 2: Generate patch with Claude
-    console.log('🤖 Step 2: Generating patch with AI...');
+    logger.info('🤖 Step 2: Generating patch with AI');
     const patch = await generatePatch(parsedRack, capabilities, analysis, intent, {
       technique,
       genre,
@@ -68,14 +78,36 @@ export async function POST(request: NextRequest) {
     // Step 3: Generate variations if requested
     let variations: Patch[] = [];
     if (generateVariations) {
-      console.log('🔄 Step 3: Generating variations...');
+      logger.info('🔄 Step 3: Generating variations');
       variations = await generatePatchVariations(patch, parsedRack, capabilities, 3);
     }
 
-    // TODO: Save to Cosmos DB
-    // await savePatchToDatabase(patch);
+    // Step 4: Save patch to database (graceful degradation if DB unavailable)
+    try {
+      await savePatch(patch);
+      logger.info('💾 Patch saved to database', {
+        patchId: patch.id,
+        userId: patch.userId,
+      });
+    } catch (error) {
+      logger.error('⚠️  Failed to save patch to database', {
+        patchId: patch.id,
+        userId: patch.userId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      // Continue - patch generation succeeded even if save failed
+    }
 
-    console.log(`✅ Patch generated successfully!`);
+    const duration = Date.now() - startTime;
+    logger.info('✅ Patch generated successfully', {
+      patchId: patch.id,
+      rackId: parsedRack.metadata.rackId,
+      userId,
+      connectionCount: patch.connections.length,
+      techniqueCount: patch.metadata.techniques.length,
+      variationCount: variations.length,
+      duration
+    });
 
     return NextResponse.json({
       success: true,
@@ -88,10 +120,13 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('❌ Patch generation failed:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Patch generation failed', {
+      error: errorMessage,
+      stack: errorStack
+    });
 
     return NextResponse.json(
       {

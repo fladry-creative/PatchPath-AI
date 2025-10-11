@@ -6,6 +6,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { type ParsedRack, type RackCapabilities, type RackAnalysis } from '@/types/rack';
 import { type Patch } from '@/types/patch';
+import logger from '@/lib/logger';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -139,10 +140,16 @@ export async function generatePatch(
   }
 ): Promise<Patch> {
   try {
-    console.log(`🤖 Generating patch with Claude...`);
-    console.log(`   Intent: ${userIntent}`);
-    if (options?.technique) console.log(`   Technique: ${options.technique}`);
-    if (options?.genre) console.log(`   Genre: ${options.genre}`);
+    const startTime = Date.now();
+
+    logger.info('🤖 Generating patch with Claude', {
+      model: MODEL,
+      userIntent,
+      technique: options?.technique,
+      genre: options?.genre,
+      difficulty: options?.difficulty,
+      moduleCount: rack.modules.length
+    });
 
     const systemPrompt = buildSystemPrompt();
     const userPrompt = buildUserPrompt(
@@ -169,8 +176,13 @@ export async function generatePatch(
 
     // Extract JSON response
     const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
+    const responseTime = Date.now() - startTime;
 
-    console.log(`✅ Claude response received (${responseText.length} chars)`);
+    logger.info('✅ Claude response received', {
+      responseLength: responseText.length,
+      duration: responseTime,
+      model: MODEL
+    });
 
     // Parse JSON (Claude might wrap in ```json blocks)
     let jsonText = responseText;
@@ -222,15 +234,27 @@ export async function generatePatch(
       tags: [],
     };
 
-    console.log(`🎸 Generated patch: "${patch.metadata.title}"`);
-    console.log(`   Connections: ${patch.connections.length}`);
-    console.log(`   Steps: ${patch.patchingOrder.length}`);
+    const totalTime = Date.now() - startTime;
+
+    logger.info('🎸 Patch generated successfully', {
+      patchTitle: patch.metadata.title,
+      connectionCount: patch.connections.length,
+      stepCount: patch.patchingOrder.length,
+      techniqueCount: patch.metadata.techniques.length,
+      difficulty: patch.metadata.difficulty,
+      duration: totalTime
+    });
 
     return patch;
   } catch (error: unknown) {
-    console.error('❌ Claude API error:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Claude API error', {
+      error: errorMessage,
+      stack: errorStack,
+      model: MODEL
+    });
     if (errorMessage.includes('JSON')) {
       throw new Error(
         'Failed to parse Claude response as JSON. The AI may have returned invalid format.'
@@ -251,7 +275,13 @@ export async function generatePatchVariations(
   count: number = 3
 ): Promise<Patch[]> {
   try {
-    console.log(`🔄 Generating ${count} variations of "${basePatch.metadata.title}"...`);
+    const startTime = Date.now();
+
+    logger.info('🔄 Generating patch variations', {
+      basePatchTitle: basePatch.metadata.title,
+      variationCount: count,
+      model: MODEL
+    });
 
     const systemPrompt = buildSystemPrompt();
 
@@ -344,12 +374,25 @@ Return a JSON array of ${count} patch objects with the same structure as before.
       variations.push(patch);
     }
 
-    console.log(`✅ Generated ${variations.length} variations`);
+    const duration = Date.now() - startTime;
+
+    logger.info('✅ Generated variations successfully', {
+      variationCount: variations.length,
+      duration,
+      model: MODEL
+    });
 
     return variations;
   } catch (error: unknown) {
-    console.error('❌ Variation generation error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Variation generation error', {
+      error: errorMessage,
+      stack: errorStack,
+      model: MODEL
+    });
+
     throw new Error(`Failed to generate variations: ${errorMessage}`);
   }
 }

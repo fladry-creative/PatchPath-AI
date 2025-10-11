@@ -4,6 +4,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
+import logger from '@/lib/logger';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -89,7 +90,10 @@ IMPORTANT: Return your analysis as valid JSON in this exact structure:
   ]
 }`;
 
-  console.log('🔍 Analyzing rack image with Claude Vision...');
+  logger.info('🔍 Analyzing rack image with Claude Vision', {
+    imageType,
+    imageSize: Buffer.isBuffer(imageData) ? imageData.length : imageData.length
+  });
 
   const message = await anthropic.messages.create({
     model: 'claude-sonnet-4-5', // Sonnet 4.5: Best vision + reasoning, great price
@@ -136,7 +140,12 @@ IMPORTANT: Return your analysis as valid JSON in this exact structure:
 
   const analysis: RackVisionAnalysis = JSON.parse(jsonText);
 
-  console.log(`✅ Vision analysis complete: ${analysis.modules.length} modules identified`);
+  logger.info('✅ Vision analysis complete', {
+    moduleCount: analysis.modules.length,
+    rows: analysis.rackLayout.rows,
+    estimatedHP: analysis.rackLayout.estimatedHP,
+    quality: analysis.overallQuality
+  });
 
   return analysis;
 }

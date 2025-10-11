@@ -17,6 +17,7 @@ import {
 } from '@/lib/vision/rack-analyzer';
 import { enrichModulesBatch, calculateEnrichmentStats } from '@/lib/modules/enrichment-v2';
 import { isCosmosConfigured } from '@/lib/database/cosmos';
+import logger from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -47,7 +48,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`📸 Processing rack image: ${imageFile.name} (${imageFile.type})`);
+    logger.info('📸 Processing rack image', {
+      fileName: imageFile.name,
+      fileType: imageFile.type,
+      fileSize: imageFile.size
+    });
 
     // Convert file to buffer
     const arrayBuffer = await imageFile.arrayBuffer();
@@ -63,9 +68,11 @@ export async function POST(request: NextRequest) {
     const visionAnalysis = await analyzeRackImage(buffer, imageType);
     const visionTime = Date.now() - visionStart;
 
-    console.log(
-      `✅ Vision: ${visionAnalysis.modules.length} modules in ${(visionTime / 1000).toFixed(2)}s`
-    );
+    logger.info('✅ Vision analysis complete', {
+      moduleCount: visionAnalysis.modules.length,
+      duration: visionTime,
+      quality: visionAnalysis.overallQuality
+    });
 
     // Step 2: Database Enrichment (if Cosmos is configured)
     let enrichmentResults = null;
@@ -73,7 +80,7 @@ export async function POST(request: NextRequest) {
     let enrichmentTime = 0;
 
     if (isCosmosConfigured() && visionAnalysis.modules.length > 0) {
-      console.log(`🔍 Database enrichment starting...`);
+      logger.info('🔍 Database enrichment starting');
 
       const enrichStart = Date.now();
       enrichmentResults = await enrichModulesBatch(visionAnalysis.modules);
@@ -81,11 +88,14 @@ export async function POST(request: NextRequest) {
 
       enrichmentStats = calculateEnrichmentStats(enrichmentResults);
 
-      console.log(
-        `✅ Enrichment: ${enrichmentStats.cacheHits} hits, ${enrichmentStats.cacheMisses} misses (${enrichmentStats.hitRate.toFixed(1)}% hit rate)`
-      );
+      logger.info('✅ Enrichment complete', {
+        cacheHits: enrichmentStats.cacheHits,
+        cacheMisses: enrichmentStats.cacheMisses,
+        hitRate: enrichmentStats.hitRate,
+        duration: enrichmentTime
+      });
     } else if (!isCosmosConfigured()) {
-      console.log('⚠️  Cosmos DB not configured - skipping enrichment');
+      logger.warn('⚠️  Cosmos DB not configured - skipping enrichment');
     }
 
     // Calculate cost
@@ -127,10 +137,13 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('❌ Vision + enrichment pipeline failed:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Vision + enrichment pipeline failed', {
+      error: errorMessage,
+      stack: errorStack
+    });
 
     return NextResponse.json(
       {

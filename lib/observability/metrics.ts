@@ -5,6 +5,8 @@
  * Can be extended to send to Datadog, Prometheus, or other monitoring platforms.
  */
 
+import logger from '@/lib/logger';
+
 export interface Metric {
   name: string;
   value: number;
@@ -38,11 +40,22 @@ class MetricsCollector {
 
     // Log metric for development
     if (process.env.NODE_ENV !== 'production') {
-      console.log(`📊 Metric: ${name} = ${value}${unit} ${tags ? JSON.stringify(tags) : ''}`);
+      logger.debug('📊 Metric recorded', {
+        name,
+        value,
+        unit,
+        tags
+      });
     }
 
-    // TODO: Send to monitoring platform (Datadog, Prometheus, etc.)
-    // this.sendToDatadog(metric);
+    // Monitoring Integration Strategy:
+    // Currently: In-memory tracking only (last 1000 metrics)
+    // Future: Add integration with monitoring platform when MONITORING_ENABLED=true
+    // Options: Datadog, Prometheus, Azure Application Insights, New Relic
+    // Implementation: Uncomment sendToDatadog() or implement preferred platform
+    if (process.env.MONITORING_ENABLED === 'true') {
+      this.sendToDatadog(metric);
+    }
   }
 
   /**
@@ -126,13 +139,49 @@ class MetricsCollector {
 
   /**
    * Send metrics to Datadog (placeholder)
+   *
+   * To enable Datadog integration:
+   * 1. Install package: npm install datadog-metrics
+   * 2. Set environment variables: DATADOG_API_KEY, DATADOG_APP_KEY
+   * 3. Uncomment implementation below
+   * 4. Choose metric type based on name (gauge, counter, histogram, etc.)
+   *
+   * Alternative monitoring platforms:
+   * - Prometheus: Use prom-client package with /metrics endpoint
+   * - Azure Application Insights: Use applicationinsights package
+   * - New Relic: Use newrelic package
    */
   private sendToDatadog(metric: Metric) {
-    if (!process.env.DATADOG_API_KEY) return;
+    if (!process.env.DATADOG_API_KEY) {
+      logger.debug('📊 DATADOG_API_KEY not set - skipping metric push');
+      return;
+    }
 
-    // TODO: Implement Datadog integration
-    // const dogstatsd = require('datadog-metrics');
-    // dogstatsd.gauge(metric.name, metric.value, metric.tags);
+    // Datadog integration implementation (requires datadog-metrics package):
+    // import { StatsD } from 'datadog-metrics';
+    // const dogstatsd = new StatsD({ apiKey: process.env.DATADOG_API_KEY });
+    //
+    // switch (metric.unit) {
+    //   case 'ms':
+    //     dogstatsd.histogram(metric.name, metric.value, metric.tags);
+    //     break;
+    //   case 'count':
+    //     dogstatsd.increment(metric.name, metric.value, metric.tags);
+    //     break;
+    //   case 'percent':
+    //   case 'bytes':
+    //     dogstatsd.gauge(metric.name, metric.value, metric.tags);
+    //     break;
+    // }
+
+    // For now, just log that we would send to Datadog
+    if (process.env.NODE_ENV === 'development') {
+      logger.debug('📊 Datadog mock metric', {
+        name: metric.name,
+        value: metric.value,
+        unit: metric.unit
+      });
+    }
   }
 }
 

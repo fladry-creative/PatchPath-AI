@@ -11,6 +11,7 @@ import {
   getVisionModelInfo,
 } from '@/lib/vision/rack-analyzer';
 import { enrichModules } from '@/lib/modules/enrichment';
+import logger from '@/lib/logger';
 
 export async function POST(request: NextRequest) {
   try {
@@ -42,7 +43,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    console.log(`📸 Analyzing rack image: ${imageFile.name} (${imageFile.type})`);
+    logger.info('📸 Analyzing rack image', {
+      fileName: imageFile.name,
+      fileType: imageFile.type,
+      fileSize: imageFile.size,
+      enrich: enrichData
+    });
 
     // Convert file to buffer
     const arrayBuffer = await imageFile.arrayBuffer();
@@ -58,14 +64,19 @@ export async function POST(request: NextRequest) {
     const visionAnalysis = await analyzeRackImage(buffer, imageType);
     const visionTime = Date.now() - startTime;
 
-    console.log(`✅ Vision analysis complete in ${(visionTime / 1000).toFixed(2)}s`);
+    logger.info('✅ Vision analysis complete', {
+      moduleCount: visionAnalysis.modules.length,
+      duration: visionTime
+    });
 
     // Step 2: Optional enrichment
     let enrichedModules = null;
     let enrichmentTime = 0;
 
     if (enrichData && visionAnalysis.modules.length > 0) {
-      console.log(`🔎 Enriching ${visionAnalysis.modules.length} modules...`);
+      logger.info('🔎 Enriching modules', {
+        moduleCount: visionAnalysis.modules.length
+      });
 
       const enrichStart = Date.now();
       enrichedModules = await enrichModules(
@@ -76,7 +87,10 @@ export async function POST(request: NextRequest) {
       );
       enrichmentTime = Date.now() - enrichStart;
 
-      console.log(`✅ Enrichment complete in ${(enrichmentTime / 1000).toFixed(2)}s`);
+      logger.info('✅ Enrichment complete', {
+        enrichedCount: enrichedModules?.length || 0,
+        duration: enrichmentTime
+      });
     }
 
     return NextResponse.json({
@@ -100,10 +114,13 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error('❌ Vision analysis failed:', error);
-
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     const errorStack = error instanceof Error ? error.stack : undefined;
+
+    logger.error('❌ Vision analysis failed', {
+      error: errorMessage,
+      stack: errorStack
+    });
 
     return NextResponse.json(
       {

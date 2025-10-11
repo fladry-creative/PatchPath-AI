@@ -3,21 +3,27 @@
  */
 
 import { CosmosClient, type Database, type Container } from '@azure/cosmos';
+import logger from '@/lib/logger';
 
 // Cosmos DB configuration
 const endpoint = process.env.COSMOS_ENDPOINT || '';
 const key = process.env.COSMOS_KEY || '';
 const connectionString = process.env.AZURE_COSMOS_CONNECTION_STRING || '';
 
-// Initialize client
-let cosmosClient: CosmosClient;
+// Initialize client (lazy)
+let cosmosClient: CosmosClient | null = null;
 
-if (connectionString) {
-  cosmosClient = new CosmosClient(connectionString);
-} else if (endpoint && key) {
-  cosmosClient = new CosmosClient({ endpoint, key });
-} else {
-  console.warn('⚠️  Cosmos DB not configured - using in-memory fallback');
+function getCosmosClient(): CosmosClient {
+  if (!cosmosClient) {
+    if (connectionString) {
+      cosmosClient = new CosmosClient(connectionString);
+    } else if (endpoint && key) {
+      cosmosClient = new CosmosClient({ endpoint, key });
+    } else {
+      throw new Error('Cosmos DB not configured - missing COSMOS_ENDPOINT/COSMOS_KEY or AZURE_COSMOS_CONNECTION_STRING');
+    }
+  }
+  return cosmosClient;
 }
 
 // Database and container names
@@ -34,7 +40,8 @@ const CONTAINERS = {
  * Get database instance
  */
 export async function getDatabase(): Promise<Database> {
-  const { database } = await cosmosClient.databases.createIfNotExists({
+  const client = getCosmosClient();
+  const { database } = await client.databases.createIfNotExists({
     id: DATABASE_ID,
   });
   return database;
@@ -92,7 +99,12 @@ export async function healthCheck(): Promise<boolean> {
     await database.read();
     return true;
   } catch (error) {
-    console.error('Cosmos DB health check failed:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+
+    logger.error('Cosmos DB health check failed', {
+      error: errorMessage
+    });
+
     return false;
   }
 }
