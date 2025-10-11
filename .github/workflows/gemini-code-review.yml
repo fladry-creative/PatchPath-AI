@@ -34,6 +34,14 @@ jobs:
             **/*.jsx
           separator: ','
 
+      - name: Verify Gemini API Key
+        if: steps.changed-files.outputs.any_changed == 'true'
+        run: |
+          if [ -z "${{ secrets.GEMINI_API_KEY }}" ]; then
+            echo "::warning::GEMINI_API_KEY secret is not configured. Please add it to repository secrets."
+            exit 1
+          fi
+
       - name: Gemini Code Review
         if: steps.changed-files.outputs.any_changed == 'true'
         uses: actions/github-script@v7
