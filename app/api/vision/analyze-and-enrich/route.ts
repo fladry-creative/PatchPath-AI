@@ -9,8 +9,12 @@
  * 4. Return enriched results with stats
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { analyzeRackImage, isVisionConfigured, getVisionModelInfo } from '@/lib/vision/rack-analyzer';
+import { type NextRequest, NextResponse } from 'next/server';
+import {
+  analyzeRackImage,
+  isVisionConfigured,
+  getVisionModelInfo,
+} from '@/lib/vision/rack-analyzer';
 import { enrichModulesBatch, calculateEnrichmentStats } from '@/lib/modules/enrichment-v2';
 import { isCosmosConfigured } from '@/lib/database/cosmos';
 
@@ -59,7 +63,9 @@ export async function POST(request: NextRequest) {
     const visionAnalysis = await analyzeRackImage(buffer, imageType);
     const visionTime = Date.now() - visionStart;
 
-    console.log(`✅ Vision: ${visionAnalysis.modules.length} modules in ${(visionTime / 1000).toFixed(2)}s`);
+    console.log(
+      `✅ Vision: ${visionAnalysis.modules.length} modules in ${(visionTime / 1000).toFixed(2)}s`
+    );
 
     // Step 2: Database Enrichment (if Cosmos is configured)
     let enrichmentResults = null;
@@ -75,21 +81,25 @@ export async function POST(request: NextRequest) {
 
       enrichmentStats = calculateEnrichmentStats(enrichmentResults);
 
-      console.log(`✅ Enrichment: ${enrichmentStats.cacheHits} hits, ${enrichmentStats.cacheMisses} misses (${enrichmentStats.hitRate.toFixed(1)}% hit rate)`);
+      console.log(
+        `✅ Enrichment: ${enrichmentStats.cacheHits} hits, ${enrichmentStats.cacheMisses} misses (${enrichmentStats.hitRate.toFixed(1)}% hit rate)`
+      );
     } else if (!isCosmosConfigured()) {
       console.log('⚠️  Cosmos DB not configured - skipping enrichment');
     }
 
     // Calculate cost
     const visionCost = (visionTime / 1000) * 0.0001; // Rough estimate
-    const enrichmentCost = enrichmentStats ? (enrichmentStats.cacheMisses * 0.10) : 0;
+    const enrichmentCost = enrichmentStats ? enrichmentStats.cacheMisses * 0.1 : 0;
     const totalCost = visionCost + enrichmentCost;
 
     return NextResponse.json({
       success: true,
       timing: {
         visionAnalysis: `${(visionTime / 1000).toFixed(2)}s`,
-        enrichment: isCosmosConfigured() ? `${(enrichmentTime / 1000).toFixed(2)}s` : 'not configured',
+        enrichment: isCosmosConfigured()
+          ? `${(enrichmentTime / 1000).toFixed(2)}s`
+          : 'not configured',
         total: `${((visionTime + enrichmentTime) / 1000).toFixed(2)}s`,
       },
       costs: {
@@ -101,26 +111,32 @@ export async function POST(request: NextRequest) {
       modelInfo: getVisionModelInfo(),
       databaseConfigured: isCosmosConfigured(),
       visionAnalysis,
-      enrichment: enrichmentResults ? {
-        results: enrichmentResults,
-        stats: enrichmentStats,
-      } : null,
+      enrichment: enrichmentResults
+        ? {
+            results: enrichmentResults,
+            stats: enrichmentStats,
+          }
+        : null,
       summary: {
         modulesDetected: visionAnalysis.modules.length,
         modulesEnriched: enrichmentResults?.length || 0,
         cacheHitRate: enrichmentStats ? `${enrichmentStats.hitRate.toFixed(1)}%` : 'N/A',
-        costPerModule: enrichmentResults ? `$${(totalCost / enrichmentResults.length).toFixed(4)}` : 'N/A',
+        costPerModule: enrichmentResults
+          ? `$${(totalCost / enrichmentResults.length).toFixed(4)}`
+          : 'N/A',
       },
     });
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Vision + enrichment pipeline failed:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
 
     return NextResponse.json(
       {
         error: 'Pipeline failed',
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        message: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
       },
       { status: 500 }
     );

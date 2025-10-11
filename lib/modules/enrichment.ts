@@ -4,7 +4,7 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { Module, ModuleType } from '@/types/module';
+import { type Module, type ModuleType } from '@/types/module';
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || '',
@@ -24,7 +24,6 @@ export async function enrichModuleData(
   moduleName: string,
   manufacturer?: string
 ): Promise<ModuleSearchResult> {
-
   const searchQuery = manufacturer
     ? `${manufacturer} ${moduleName} eurorack specifications`
     : `${moduleName} eurorack specifications`;
@@ -102,42 +101,65 @@ If you cannot find reliable information, set confidence low and needsReview to t
       jsonText = jsonMatch[1];
     }
 
-    const data = JSON.parse(jsonText);
+    interface ModuleResponse {
+      name: string;
+      manufacturer: string;
+      type: ModuleType;
+      hp: number;
+      depth?: number;
+      power?: {
+        positive12V?: number;
+        negative12V?: number;
+        positive5V?: number;
+      };
+      inputs?: Array<{ name: string; type: string }>;
+      outputs?: Array<{ name: string; type: string }>;
+      description?: string;
+      moduleGridUrl?: string;
+      manufacturerUrl?: string;
+      sources?: string[];
+      confidence?: number;
+      needsReview?: boolean;
+    }
+
+    const data: ModuleResponse = JSON.parse(jsonText);
 
     // Build Module object
-    const module: Partial<Module> = {
+    const moduleData: Partial<Module> = {
       name: data.name,
       manufacturer: data.manufacturer,
       type: data.type as ModuleType,
       hp: data.hp,
       depth: data.depth,
       power: data.power,
-      inputs: data.inputs?.map((input: any, idx: number) => ({
-        id: `in-${idx}`,
-        name: input.name,
-        type: input.type,
-      })) || [],
-      outputs: data.outputs?.map((output: any, idx: number) => ({
-        id: `out-${idx}`,
-        name: output.name,
-        type: output.type,
-      })) || [],
+      inputs:
+        data.inputs?.map((input, idx: number) => ({
+          id: `in-${idx}`,
+          name: input.name,
+          type: input.type,
+        })) || [],
+      outputs:
+        data.outputs?.map((output, idx: number) => ({
+          id: `out-${idx}`,
+          name: output.name,
+          type: output.type,
+        })) || [],
       description: data.description,
       moduleGridUrl: data.moduleGridUrl,
       manufacturerUrl: data.manufacturerUrl,
     };
 
-    console.log(`✅ Found specs for ${module.name} (confidence: ${data.confidence})`);
+    console.log(`✅ Found specs for ${moduleData.name} (confidence: ${data.confidence})`);
 
     return {
-      module,
+      module: moduleData,
       sources: data.sources || [],
       confidence: data.confidence || 0.5,
       needsReview: data.needsReview || false,
     };
-
-  } catch (error: any) {
-    console.error(`❌ Failed to enrich module ${moduleName}:`, error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`❌ Failed to enrich module ${moduleName}:`, errorMessage);
 
     // Return partial data
     return {
@@ -173,7 +195,7 @@ export async function enrichModules(
       results.push(result);
 
       // Rate limit: wait 500ms between requests
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch (error) {
       console.error(`Failed to enrich ${moduleInfo.name}:`, error);
       results.push({

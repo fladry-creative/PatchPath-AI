@@ -3,7 +3,7 @@
  * POST /api/racks/analyze
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { scrapeModularGridRack, isValidModularGridUrl } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities, generateRackSummary } from '@/lib/scraper/analyzer';
@@ -13,10 +13,7 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Parse request body
@@ -24,16 +21,16 @@ export async function POST(request: NextRequest) {
     const { url } = body;
 
     if (!url) {
-      return NextResponse.json(
-        { error: 'ModularGrid URL is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'ModularGrid URL is required' }, { status: 400 });
     }
 
     // Validate URL
     if (!isValidModularGridUrl(url)) {
       return NextResponse.json(
-        { error: 'Invalid ModularGrid rack URL. Must be in format: https://modulargrid.net/e/racks/view/[id]' },
+        {
+          error:
+            'Invalid ModularGrid rack URL. Must be in format: https://modulargrid.net/e/racks/view/[id]',
+        },
         { status: 400 }
       );
     }
@@ -67,14 +64,15 @@ export async function POST(request: NextRequest) {
       analysis,
       summary,
     });
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Rack analysis failed:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
 
     return NextResponse.json(
       {
         error: 'Failed to analyze rack',
-        message: error.message || 'Unknown error',
+        message: errorMessage,
       },
       { status: 500 }
     );

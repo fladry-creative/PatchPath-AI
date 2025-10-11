@@ -4,8 +4,8 @@
  */
 
 import Anthropic from '@anthropic-ai/sdk';
-import { ParsedRack, RackCapabilities, RackAnalysis } from '@/types/rack';
-import { Patch, PatchMetadata, Connection, ParameterSuggestion } from '@/types/patch';
+import { type ParsedRack, type RackCapabilities, type RackAnalysis } from '@/types/rack';
+import { type Patch } from '@/types/patch';
 
 // Initialize Anthropic client
 const anthropic = new Anthropic({
@@ -79,7 +79,7 @@ function buildUserPrompt(
 ): string {
   // Build module list
   const moduleList = rack.modules
-    .map(m => `- ${m.name} by ${m.manufacturer} (${m.type}, ${m.hp}HP)`)
+    .map((m) => `- ${m.name} by ${m.manufacturer} (${m.type}, ${m.hp}HP)`)
     .join('\n');
 
   // Build capabilities summary
@@ -116,7 +116,7 @@ USER REQUEST: ${userIntent}`;
 
   if (analysis.warnings.length > 0) {
     prompt += `\n\nWARNINGS TO CONSIDER:
-${analysis.warnings.map(w => `- ${w}`).join('\n')}`;
+${analysis.warnings.map((w) => `- ${w}`).join('\n')}`;
   }
 
   prompt += `\n\nPlease generate a creative, working patch using ONLY the modules listed above. Return valid JSON only.`;
@@ -168,9 +168,7 @@ export async function generatePatch(
     });
 
     // Extract JSON response
-    const responseText = message.content[0].type === 'text'
-      ? message.content[0].text
-      : '';
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
 
     console.log(`✅ Claude response received (${responseText.length} chars)`);
 
@@ -198,14 +196,22 @@ export async function generatePatch(
         genres: patchData.genres,
         userIntent,
       },
-      connections: patchData.connections.map((c: any) => ({
-        id: `conn-${Date.now()}-${Math.random()}`,
-        from: c.from,
-        to: c.to,
-        signalType: c.signalType,
-        importance: c.importance,
-        note: c.note,
-      })),
+      connections: patchData.connections.map(
+        (c: {
+          from: { moduleId: string; moduleName: string; outputName: string };
+          to: { moduleId: string; moduleName: string; inputName: string };
+          signalType: 'audio' | 'cv' | 'gate' | 'clock';
+          importance: 'primary' | 'modulation' | 'utility';
+          note?: string;
+        }) => ({
+          id: `conn-${Date.now()}-${Math.random()}`,
+          from: c.from,
+          to: c.to,
+          signalType: c.signalType,
+          importance: c.importance,
+          note: c.note,
+        })
+      ),
       patchingOrder: patchData.patchingOrder,
       parameterSuggestions: patchData.parameterSuggestions,
       whyThisWorks: patchData.whyThisWorks,
@@ -221,15 +227,17 @@ export async function generatePatch(
     console.log(`   Steps: ${patch.patchingOrder.length}`);
 
     return patch;
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Claude API error:', error);
 
-    if (error.message?.includes('JSON')) {
-      throw new Error('Failed to parse Claude response as JSON. The AI may have returned invalid format.');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    if (errorMessage.includes('JSON')) {
+      throw new Error(
+        'Failed to parse Claude response as JSON. The AI may have returned invalid format.'
+      );
     }
 
-    throw new Error(`Failed to generate patch: ${error.message}`);
+    throw new Error(`Failed to generate patch: ${errorMessage}`);
   }
 }
 
@@ -253,12 +261,12 @@ PATCH: ${basePatch.metadata.title}
 Description: ${basePatch.metadata.description}
 
 CONNECTIONS:
-${basePatch.connections.map(c =>
-  `${c.from.moduleName} ${c.from.outputName} → ${c.to.moduleName} ${c.to.inputName}`
-).join('\n')}
+${basePatch.connections
+  .map((c) => `${c.from.moduleName} ${c.from.outputName} → ${c.to.moduleName} ${c.to.inputName}`)
+  .join('\n')}
 
 AVAILABLE MODULES:
-${rack.modules.map(m => `- ${m.name} (${m.type})`).join('\n')}
+${rack.modules.map((m) => `- ${m.name} (${m.type})`).join('\n')}
 
 Please generate ${count} CREATIVE VARIATIONS of this patch. Each variation should:
 1. Use different routing or modulation sources
@@ -279,9 +287,7 @@ Return a JSON array of ${count} patch objects with the same structure as before.
       ],
     });
 
-    const responseText = message.content[0].type === 'text'
-      ? message.content[0].text
-      : '';
+    const responseText = message.content[0].type === 'text' ? message.content[0].text : '';
 
     // Parse JSON array
     let jsonText = responseText;
@@ -309,14 +315,22 @@ Return a JSON array of ${count} patch objects with the same structure as before.
           genres: patchData.genres,
           userIntent: basePatch.metadata.userIntent,
         },
-        connections: patchData.connections.map((c: any) => ({
-          id: `conn-${Date.now()}-${Math.random()}`,
-          from: c.from,
-          to: c.to,
-          signalType: c.signalType,
-          importance: c.importance,
-          note: c.note,
-        })),
+        connections: patchData.connections.map(
+          (c: {
+            from: { moduleId: string; moduleName: string; outputName: string };
+            to: { moduleId: string; moduleName: string; inputName: string };
+            signalType: 'audio' | 'cv' | 'gate' | 'clock';
+            importance: 'primary' | 'modulation' | 'utility';
+            note?: string;
+          }) => ({
+            id: `conn-${Date.now()}-${Math.random()}`,
+            from: c.from,
+            to: c.to,
+            signalType: c.signalType,
+            importance: c.importance,
+            note: c.note,
+          })
+        ),
         patchingOrder: patchData.patchingOrder,
         parameterSuggestions: patchData.parameterSuggestions,
         whyThisWorks: patchData.whyThisWorks,
@@ -333,10 +347,10 @@ Return a JSON array of ${count} patch objects with the same structure as before.
     console.log(`✅ Generated ${variations.length} variations`);
 
     return variations;
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Variation generation error:', error);
-    throw new Error(`Failed to generate variations: ${error.message}`);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`Failed to generate variations: ${errorMessage}`);
   }
 }
 
@@ -355,7 +369,7 @@ export function getModelInfo() {
     model: MODEL,
     provider: 'Anthropic',
     costPer1MTokens: {
-      input: 3.0,  // Sonnet 4.5: $3 per million input tokens
+      input: 3.0, // Sonnet 4.5: $3 per million input tokens
       output: 15.0, // $15 per million output tokens
     },
   };

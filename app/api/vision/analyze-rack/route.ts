@@ -4,8 +4,12 @@
  * Accepts: multipart/form-data with image file
  */
 
-import { NextRequest, NextResponse } from 'next/server';
-import { analyzeRackImage, isVisionConfigured, getVisionModelInfo } from '@/lib/vision/rack-analyzer';
+import { type NextRequest, NextResponse } from 'next/server';
+import {
+  analyzeRackImage,
+  isVisionConfigured,
+  getVisionModelInfo,
+} from '@/lib/vision/rack-analyzer';
 import { enrichModules } from '@/lib/modules/enrichment';
 
 export async function POST(request: NextRequest) {
@@ -65,7 +69,7 @@ export async function POST(request: NextRequest) {
 
       const enrichStart = Date.now();
       enrichedModules = await enrichModules(
-        visionAnalysis.modules.map(m => ({
+        visionAnalysis.modules.map((m) => ({
           name: m.name,
           manufacturer: m.manufacturer,
         }))
@@ -87,21 +91,25 @@ export async function POST(request: NextRequest) {
       enrichedModules,
       summary: {
         modulesDetected: visionAnalysis.modules.length,
-        highConfidence: visionAnalysis.modules.filter(m => m.confidence > 0.8).length,
-        mediumConfidence: visionAnalysis.modules.filter(m => m.confidence >= 0.5 && m.confidence <= 0.8).length,
-        lowConfidence: visionAnalysis.modules.filter(m => m.confidence < 0.5).length,
+        highConfidence: visionAnalysis.modules.filter((m) => m.confidence > 0.8).length,
+        mediumConfidence: visionAnalysis.modules.filter(
+          (m) => m.confidence >= 0.5 && m.confidence <= 0.8
+        ).length,
+        lowConfidence: visionAnalysis.modules.filter((m) => m.confidence < 0.5).length,
         enriched: enrichData ? enrichedModules?.length || 0 : 0,
       },
     });
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Vision analysis failed:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
 
     return NextResponse.json(
       {
         error: 'Vision analysis failed',
-        message: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        message: errorMessage,
+        stack: process.env.NODE_ENV === 'development' ? errorStack : undefined,
       },
       { status: 500 }
     );

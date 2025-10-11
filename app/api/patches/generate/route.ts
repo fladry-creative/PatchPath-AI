@@ -3,7 +3,7 @@
  * POST /api/patches/generate
  */
 
-import { NextRequest, NextResponse } from 'next/server';
+import { type NextRequest, NextResponse } from 'next/server';
 import { auth } from '@clerk/nextjs/server';
 import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities } from '@/lib/scraper/analyzer';
@@ -14,16 +14,16 @@ export async function POST(request: NextRequest) {
     // Check authentication
     const { userId } = await auth();
     if (!userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     // Check Claude configuration
     if (!isClaudeConfigured()) {
       return NextResponse.json(
-        { error: 'Claude API is not configured. Please add ANTHROPIC_API_KEY to environment variables.' },
+        {
+          error:
+            'Claude API is not configured. Please add ANTHROPIC_API_KEY to environment variables.',
+        },
         { status: 500 }
       );
     }
@@ -33,10 +33,7 @@ export async function POST(request: NextRequest) {
     const { rackUrl, intent, technique, genre, difficulty, generateVariations } = body;
 
     if (!rackUrl) {
-      return NextResponse.json(
-        { error: 'Rack URL is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Rack URL is required' }, { status: 400 });
     }
 
     if (!intent) {
@@ -58,13 +55,11 @@ export async function POST(request: NextRequest) {
 
     // Step 2: Generate patch with Claude
     console.log('🤖 Step 2: Generating patch with AI...');
-    const patch = await generatePatch(
-      parsedRack,
-      capabilities,
-      analysis,
-      intent,
-      { technique, genre, difficulty }
-    );
+    const patch = await generatePatch(parsedRack, capabilities, analysis, intent, {
+      technique,
+      genre,
+      difficulty,
+    });
 
     // Set user ID
     patch.userId = userId;
@@ -73,12 +68,7 @@ export async function POST(request: NextRequest) {
     let variations = [];
     if (generateVariations) {
       console.log('🔄 Step 3: Generating variations...');
-      variations = await generatePatchVariations(
-        patch,
-        parsedRack,
-        capabilities,
-        3
-      );
+      variations = await generatePatchVariations(patch, parsedRack, capabilities, 3);
     }
 
     // TODO: Save to Cosmos DB
@@ -96,15 +86,17 @@ export async function POST(request: NextRequest) {
         moduleCount: parsedRack.modules.length,
       },
     });
-
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('❌ Patch generation failed:', error);
+
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
 
     return NextResponse.json(
       {
         error: 'Failed to generate patch',
-        message: error.message || 'Unknown error',
-        details: process.env.NODE_ENV === 'development' ? error.stack : undefined,
+        message: errorMessage,
+        details: process.env.NODE_ENV === 'development' ? errorStack : undefined,
       },
       { status: 500 }
     );

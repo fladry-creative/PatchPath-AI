@@ -3,8 +3,8 @@
  * Analyzes rack capabilities and provides insights
  */
 
-import { Module, ModuleType } from '@/types/module';
-import { ParsedRack, RackCapabilities, RackAnalysis } from '@/types/rack';
+import { type Module, type ModuleType } from '@/types/module';
+import { type ParsedRack, type RackCapabilities, type RackAnalysis } from '@/types/rack';
 
 /**
  * Analyze rack capabilities
@@ -12,13 +12,13 @@ import { ParsedRack, RackCapabilities, RackAnalysis } from '@/types/rack';
 export function analyzeRackCapabilities(modules: Module[]): RackCapabilities {
   const moduleTypes = new Set<ModuleType>();
   let totalHP = 0;
-  let totalPower = {
+  const totalPower = {
     positive12V: 0,
     negative12V: 0,
     positive5V: 0,
   };
 
-  modules.forEach(module => {
+  modules.forEach((module) => {
     moduleTypes.add(module.type);
     totalHP += module.hp;
 
@@ -79,7 +79,7 @@ export function analyzeRack(rack: ParsedRack): RackAnalysis {
     techniquesPossible.push('Classic voice architecture');
   }
 
-  if (capabilities.hasVCO && rack.modules.filter(m => m.type === 'VCO').length >= 2) {
+  if (capabilities.hasVCO && rack.modules.filter((m) => m.type === 'VCO').length >= 2) {
     techniquesPossible.push('FM synthesis');
     techniquesPossible.push('Cross-modulation');
   }
@@ -105,13 +105,17 @@ export function analyzeRack(rack: ParsedRack): RackAnalysis {
 
   // Power warnings
   if (capabilities.totalPowerDraw.positive12V > 2000) {
-    warnings.push(`High +12V power draw (${capabilities.totalPowerDraw.positive12V}mA) - ensure your PSU can handle it`);
+    warnings.push(
+      `High +12V power draw (${capabilities.totalPowerDraw.positive12V}mA) - ensure your PSU can handle it`
+    );
   }
 
   // HP warnings
   const standardCaseHP = 168; // 2x 84HP rows
   if (capabilities.totalHP > standardCaseHP) {
-    warnings.push(`Rack exceeds standard case size (${capabilities.totalHP}HP > ${standardCaseHP}HP)`);
+    warnings.push(
+      `Rack exceeds standard case size (${capabilities.totalHP}HP > ${standardCaseHP}HP)`
+    );
   }
 
   return {
@@ -128,15 +132,17 @@ export function analyzeRack(rack: ParsedRack): RackAnalysis {
 export function generateRackSummary(rack: ParsedRack, analysis: RackAnalysis): string {
   const { modules } = rack;
   const moduleCount = modules.length;
-  const capabilities = analyzeRackCapabilities(modules);
 
   let summary = `Your rack contains ${moduleCount} modules across ${rack.rows.length} row(s).\n\n`;
 
   // Module breakdown
-  const typeCounts = modules.reduce((acc, m) => {
-    acc[m.type] = (acc[m.type] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  const typeCounts = modules.reduce(
+    (acc, m) => {
+      acc[m.type] = (acc[m.type] || 0) + 1;
+      return acc;
+    },
+    {} as Record<string, number>
+  );
 
   summary += '📊 Module Breakdown:\n';
   Object.entries(typeCounts)
@@ -150,7 +156,7 @@ export function generateRackSummary(rack: ParsedRack, analysis: RackAnalysis): s
   // Capabilities
   if (analysis.techniquesPossible.length > 0) {
     summary += '✨ Possible Techniques:\n';
-    analysis.techniquesPossible.forEach(technique => {
+    analysis.techniquesPossible.forEach((technique) => {
       summary += `  • ${technique}\n`;
     });
     summary += '\n';
@@ -159,7 +165,7 @@ export function generateRackSummary(rack: ParsedRack, analysis: RackAnalysis): s
   // Warnings
   if (analysis.warnings.length > 0) {
     summary += '⚠️  Warnings:\n';
-    analysis.warnings.forEach(warning => {
+    analysis.warnings.forEach((warning) => {
       summary += `  • ${warning}\n`;
     });
     summary += '\n';
@@ -168,7 +174,7 @@ export function generateRackSummary(rack: ParsedRack, analysis: RackAnalysis): s
   // Suggestions
   if (analysis.suggestions.length > 0) {
     summary += '💡 Suggestions:\n';
-    analysis.suggestions.forEach(suggestion => {
+    analysis.suggestions.forEach((suggestion) => {
       summary += `  • ${suggestion}\n`;
     });
   }

@@ -3,9 +3,9 @@
  * Database-first approach with intelligent caching
  */
 
-import { Module, ModuleType } from '@/types/module';
-import { findModule, upsertModule, incrementModuleUsage, ModuleDocument } from '@/lib/database/module-service';
-import { VisionModule } from '@/lib/vision/rack-analyzer';
+import { type Module, type ModuleType } from '@/types/module';
+import { findModule, upsertModule, incrementModuleUsage } from '@/lib/database/module-service';
+import { type VisionModule } from '@/lib/vision/rack-analyzer';
 
 export interface EnrichmentResult {
   module: Partial<Module>;
@@ -63,9 +63,9 @@ export async function enrichModuleWithCache(visionModule: VisionModule): Promise
       cacheHit: false,
       enrichmentTime: Date.now() - startTime,
     };
-
-  } catch (error: any) {
-    console.error(`Enrichment failed for ${visionModule.name}:`, error.message);
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    console.error(`Enrichment failed for ${visionModule.name}:`, errorMessage);
 
     // Fallback: return vision data as-is
     return {
@@ -88,7 +88,9 @@ export async function enrichModuleWithCache(visionModule: VisionModule): Promise
 /**
  * Batch enrich modules with caching
  */
-export async function enrichModulesBatch(visionModules: VisionModule[]): Promise<EnrichmentResult[]> {
+export async function enrichModulesBatch(
+  visionModules: VisionModule[]
+): Promise<EnrichmentResult[]> {
   console.log(`📦 Enriching ${visionModules.length} modules with database caching...`);
 
   const results: EnrichmentResult[] = [];
@@ -102,22 +104,24 @@ export async function enrichModulesBatch(visionModules: VisionModule[]): Promise
   }
 
   for (const chunk of chunks) {
-    const promises = chunk.map(module => enrichModuleWithCache(module));
+    const promises = chunk.map((module) => enrichModuleWithCache(module));
     const chunkResults = await Promise.all(promises);
     results.push(...chunkResults);
 
     // Count cache performance
-    chunkResults.forEach(result => {
+    chunkResults.forEach((result) => {
       if (result.cacheHit) cacheHits++;
       else cacheMisses++;
     });
 
     // Rate limit: wait 200ms between chunks
-    await new Promise(resolve => setTimeout(resolve, 200));
+    await new Promise((resolve) => setTimeout(resolve, 200));
   }
 
   const cacheHitRate = ((cacheHits / (cacheHits + cacheMisses)) * 100).toFixed(1);
-  console.log(`✅ Enrichment complete: ${cacheHits} cache hits, ${cacheMisses} misses (${cacheHitRate}% hit rate)`);
+  console.log(
+    `✅ Enrichment complete: ${cacheHits} cache hits, ${cacheMisses} misses (${cacheHitRate}% hit rate)`
+  );
 
   return results;
 }
@@ -167,20 +171,20 @@ export interface EnrichmentStats {
 }
 
 export function calculateEnrichmentStats(results: EnrichmentResult[]): EnrichmentStats {
-  const cacheHits = results.filter(r => r.cacheHit).length;
-  const cacheMisses = results.filter(r => !r.cacheHit).length;
+  const cacheHits = results.filter((r) => r.cacheHit).length;
+  const cacheMisses = results.filter((r) => !r.cacheHit).length;
   const totalTime = results.reduce((sum, r) => sum + (r.enrichmentTime || 0), 0);
 
   // Cost calculation
   // Cache hit: $0
   // Cache miss: ~$0.10 (web search + AI parsing in Phase 2)
-  const costSaved = cacheHits * 0.10;
+  const costSaved = cacheHits * 0.1;
 
   return {
     totalEnriched: results.length,
     cacheHits,
     cacheMisses,
-    hitRate: cacheHits / (cacheHits + cacheMisses) * 100,
+    hitRate: (cacheHits / (cacheHits + cacheMisses)) * 100,
     avgEnrichmentTime: totalTime / results.length,
     costSaved,
   };

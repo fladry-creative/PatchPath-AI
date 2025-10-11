@@ -3,34 +3,34 @@
  * Extracts rack and module data from ModularGrid URLs using Puppeteer
  */
 
-import puppeteer, { Browser, Page } from 'puppeteer';
-import { Module, ModuleType } from '@/types/module';
-import { ParsedRack, RackRow } from '@/types/rack';
+import puppeteer, { type Browser, type Page } from 'puppeteer';
+import { type Module, type ModuleType } from '@/types/module';
+import { type ParsedRack, type RackRow } from '@/types/rack';
 
 // Module type detection patterns
 const MODULE_TYPE_PATTERNS: Record<string, ModuleType> = {
-  'oscillator': 'VCO',
-  'vco': 'VCO',
-  'filter': 'VCF',
-  'vcf': 'VCF',
-  'amplifier': 'VCA',
-  'vca': 'VCA',
-  'lfo': 'LFO',
-  'envelope': 'EG',
-  'eg': 'EG',
-  'adsr': 'EG',
-  'sequencer': 'Sequencer',
-  'utility': 'Utility',
-  'mult': 'Utility',
-  'mixer': 'Mixer',
-  'effect': 'Effect',
-  'delay': 'Effect',
-  'reverb': 'Effect',
-  'midi': 'MIDI',
-  'clock': 'Clock',
-  'logic': 'Logic',
-  'random': 'Random',
-  'video': 'Video',
+  oscillator: 'VCO',
+  vco: 'VCO',
+  filter: 'VCF',
+  vcf: 'VCF',
+  amplifier: 'VCA',
+  vca: 'VCA',
+  lfo: 'LFO',
+  envelope: 'EG',
+  eg: 'EG',
+  adsr: 'EG',
+  sequencer: 'Sequencer',
+  utility: 'Utility',
+  mult: 'Utility',
+  mixer: 'Mixer',
+  effect: 'Effect',
+  delay: 'Effect',
+  reverb: 'Effect',
+  midi: 'MIDI',
+  clock: 'Clock',
+  logic: 'Logic',
+  random: 'Random',
+  video: 'Video',
 };
 
 /**
@@ -69,9 +69,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     const page: Page = await browser.newPage();
 
     // Set user agent to avoid detection
-    await page.setUserAgent(
-      'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
-    );
+    await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
 
     console.log(`🕷️  Scraping: ${url}`);
 
@@ -82,7 +80,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     });
 
     // Give page time to render (ModularGrid uses client-side rendering)
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Extract embedded JSON data from page
     const rackData = await page.evaluate(() => {
@@ -116,11 +114,17 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
         }
       }
 
+      interface DOMModuleData {
+        id: string;
+        name: string;
+        manufacturer: string;
+      }
+
       // Fallback: extract from DOM
-      const modules: any[] = [];
+      const modules: DOMModuleData[] = [];
       const moduleElements = document.querySelectorAll('.module-item, [data-module-id]');
 
-      moduleElements.forEach(el => {
+      moduleElements.forEach((el) => {
         const moduleId = el.getAttribute('data-module-id');
         const moduleName = el.querySelector('.module-name')?.textContent?.trim();
         const manufacturer = el.querySelector('.module-manufacturer')?.textContent?.trim();
@@ -139,15 +143,39 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
 
     console.log(`✅ Found ${rackData?.modules?.length || 0} modules`);
 
+    interface RawModuleData {
+      id?: string;
+      name?: string;
+      moduleName?: string;
+      manufacturer?: string;
+      brand?: string;
+      description?: string;
+      hp?: string | number;
+      size?: string | number;
+      depth?: string | number;
+      power?: {
+        positive12V?: number;
+        negative12V?: number;
+        positive5V?: number;
+      };
+      mAPositive12V?: number;
+      mANegative12V?: number;
+      mA5V?: number;
+      url?: string;
+      position?: { row: number; column: number };
+      row?: number;
+      column?: number;
+    }
+
     // Parse modules into our format
-    const modules: Module[] = (rackData?.modules || []).map((m: any, index: number) => {
-      const module: Module = {
+    const modules: Module[] = (rackData?.modules || []).map((m: RawModuleData, index: number) => {
+      const moduleData: Module = {
         id: m.id || `module-${index}`,
         name: m.name || m.moduleName || 'Unknown Module',
         manufacturer: m.manufacturer || m.brand || 'Unknown',
         type: detectModuleType(m.name || '', m.description),
-        hp: parseInt(m.hp || m.size || '0', 10),
-        depth: m.depth ? parseInt(m.depth, 10) : undefined,
+        hp: parseInt(String(m.hp || m.size || '0'), 10),
+        depth: m.depth ? parseInt(String(m.depth), 10) : undefined,
         power: {
           positive12V: m.power?.positive12V || m.mAPositive12V || undefined,
           negative12V: m.power?.negative12V || m.mANegative12V || undefined,
@@ -160,7 +188,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
         position: m.position || { row: m.row || 0, column: m.column || 0 },
       };
 
-      return module;
+      return moduleData;
     });
 
     // Extract rack metadata
@@ -171,12 +199,15 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
 
     // Organize modules by row
     const rows: RackRow[] = [];
-    const modulesByRow = modules.reduce((acc, module) => {
-      const row = module.position?.row || 0;
-      if (!acc[row]) acc[row] = [];
-      acc[row].push(module);
-      return acc;
-    }, {} as Record<number, Module[]>);
+    const modulesByRow = modules.reduce(
+      (acc, module) => {
+        const row = module.position?.row || 0;
+        if (!acc[row]) acc[row] = [];
+        acc[row].push(module);
+        return acc;
+      },
+      {} as Record<number, Module[]>
+    );
 
     Object.entries(modulesByRow).forEach(([rowNum, rowModules]) => {
       const totalHP = rowModules.reduce((sum, m) => sum + m.hp, 0);
@@ -201,7 +232,6 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     console.log(`🎸 Successfully scraped rack: ${rackName} (${modules.length} modules)`);
 
     return parsedRack;
-
   } catch (error) {
     console.error('❌ Scraping failed:', error);
     throw new Error(`Failed to scrape ModularGrid rack: ${error}`);
@@ -216,7 +246,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
  * Get module details from ModularGrid API (if available)
  * This is a placeholder for future API integration
  */
-export async function getModuleDetails(moduleId: string): Promise<Module | null> {
+export async function getModuleDetails(_moduleId: string): Promise<Module | null> {
   // TODO: Implement ModularGrid API call if/when available
   // For now, rely on scraping from rack page
   return null;
@@ -229,8 +259,7 @@ export function isValidModularGridUrl(url: string): boolean {
   try {
     const urlObj = new URL(url);
     return (
-      urlObj.hostname.includes('modulargrid.net') &&
-      urlObj.pathname.includes('/e/racks/view/')
+      urlObj.hostname.includes('modulargrid.net') && urlObj.pathname.includes('/e/racks/view/')
     );
   } catch {
     return false;

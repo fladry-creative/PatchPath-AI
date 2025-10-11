@@ -2,8 +2,7 @@
  * Mock ModularGrid data for testing
  */
 
-import { Module } from '@/types/module';
-import { ParsedRack } from '@/types/rack';
+import { type ParsedRack } from '@/types/rack';
 
 export const MOCK_RACK: ParsedRack = {
   url: 'https://modulargrid.net/e/racks/view/2383104',
@@ -93,9 +92,7 @@ export const MOCK_RACK: ParsedRack = {
       type: 'LFO',
       hp: 10,
       power: { positive12V: 100, negative12V: 10 },
-      inputs: [
-        { id: 'reset', name: 'Reset', type: 'Gate' },
-      ],
+      inputs: [{ id: 'reset', name: 'Reset', type: 'Gate' }],
       outputs: [
         { id: 'lfo1', name: 'LFO 1', type: 'CV' },
         { id: 'lfo2', name: 'LFO 2', type: 'CV' },
@@ -154,9 +151,7 @@ export const MOCK_RACK: ParsedRack = {
         { id: 'ch2', name: 'Ch 2', type: 'Audio' },
         { id: 'ch3', name: 'Ch 3', type: 'Audio' },
       ],
-      outputs: [
-        { id: 'mix', name: 'Mix', type: 'Audio' },
-      ],
+      outputs: [{ id: 'mix', name: 'Mix', type: 'Audio' }],
     },
   ],
   rows: [
