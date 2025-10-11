@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { type Patch } from '@/types/patch';
 import { PatchGenerationForm } from './PatchGenerationForm';
 import { PatchCard } from './PatchCard';

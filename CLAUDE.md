@@ -94,8 +94,9 @@ npx playwright test --grep "test name pattern"
 
 ```
 app/api/
-├── racks/analyze/         → POST: Analyze ModularGrid URL
-├── patches/generate/      → POST: Generate patch from rack + intent
+├── racks/analyze/         → POST: Analyze ModularGrid URL (saves to DB)
+├── racks/random/          → GET: Random rack from cache/scrape pool
+├── patches/generate/      → POST: Generate patch from rack + intent (saves to DB)
 ├── vision/analyze-rack/   → POST: Vision analysis of rack image
 └── test-*/                → Development testing endpoints
 ```
@@ -125,25 +126,36 @@ Required `.env.local` keys (see `.env.example`):
 
 ### Unit Tests (Jest)
 
-- Located in `__tests__/` directory
-- Uses `@testing-library/react` for component tests
-- Test utilities, AI integrations, scraper logic independently
-- 70% coverage threshold enforced (branches/functions/lines/statements)
+- **Location**: `__tests__/` directory with 27 test suites
+- **Coverage**: 302 passing tests achieving 70%+ coverage on core business logic
+- **Test Files**:
+  - `__tests__/lib/` - 12 library test files (utilities, AI, scraper, database, logger)
+  - `__tests__/api/` - 6 API route integration tests
+  - `__tests__/components/` - 3 UI component tests (101 tests, 100% passing)
+- **Uses**: `@testing-library/react` for components, real Cosmos DB and Anthropic API for integration tests
+- **Coverage threshold**: 70% enforced on branches/functions/lines/statements
 
 ### E2E Tests (Playwright)
 
-- Located in `e2e/` directory
-- Tests user flows: rack analysis → patch generation → cookbook
-- Auto-starts dev server if not running
-- CI runs with 2 retries, single worker
+- **Location**: `e2e/` directory with 4 test suites (38 total tests)
+- **Suites**:
+  - `home.spec.ts` - Landing page and navigation
+  - `auth.spec.ts` - Authentication flow and protected routes
+  - `accessibility.spec.ts` - Comprehensive a11y checks
+  - `patch-generation.spec.ts` - Complete patch generation user journey (23 tests)
+- **Tests**: Complete user flows including rack analysis, patch generation, variations, error handling
+- **Auto-starts**: Dev server if not running
+- **CI**: Runs with 2 retries, single worker
+- **Runtime**: ~15-20 minutes for full suite
 
 ### Demo Rack for Testing
 
-Use this ModularGrid rack for development testing:
-
+**Primary Demo Rack**:
 ```
 https://modulargrid.net/e/racks/view/2383104
 ```
+
+**Random Rack Feature**: Click "🎲 Try Random Rack" to test with variety of systems (90% cached, 10% fresh scrapes)
 
 ## AI Integration Details
 
@@ -178,7 +190,7 @@ import { type Patch } from '@/types/patch';
 - **Scraping Ethics**: ModularGrid scraping is for personal use. Consider rate limiting and caching.
 - **Model Selection**: Claude Sonnet 4.5 is used for quality/price balance ($3 input / $15 output per 1M tokens)
 - **Authentication**: All `/dashboard/*` routes protected by Clerk middleware
-- **Database**: Cosmos DB uses containers: `racks`, `patches`, `users`
+- **Database**: Cosmos DB uses containers: `racks`, `patches`, `modules`, `enrichments`, `users` (all data persists automatically)
 - **Container Environment**: Devcontainer pre-configured with Azure CLI, GitHub CLI, Docker-in-Docker
 
 ## CI/CD
@@ -192,12 +204,52 @@ GitHub Actions workflows (`.github/workflows/`):
 
 Build and deployment documentation: See `CI-CD.md` and `DOCKER.md`
 
+## Database Services
+
+### Patch Persistence (`lib/database/patch-service.ts`)
+
+**CRUD Operations**:
+- `savePatch()` - Save/update patch with automatic userId partitioning
+- `getPatch()` - Retrieve single patch by ID
+- `listUserPatches()` - Get all user patches with pagination
+- `updatePatch()` - Update patch fields
+- `deletePatch()` - Soft or hard delete
+- `toggleFavorite()` - Mark patch as saved/favorite
+- `searchPatches()` - Full-text search by title/description/techniques
+- `filterPatchesByRack()` - Get all patches for a specific rack
+- `updatePatchRating()` - User ratings (loved/meh/disaster)
+- `getPatchStatistics()` - Usage analytics
+
+**All patches automatically save to Cosmos DB on generation with graceful degradation**
+
+### Rack Caching (`lib/database/rack-service.ts`)
+
+**Cache Operations**:
+- `saveRack()` - Cache rack data with 30-day expiration
+- `getRack()` - Retrieve by ID or URL
+- `listRecentRacks()` - Get popular/recent racks
+- `incrementUseCount()` - Track rack usage
+- `getRackStatistics()` - Cache analytics
+
+**Racks automatically cache on analysis/random selection for performance**
+
+### Random Rack Feature (`lib/scraper/random-rack.ts`)
+
+**Intelligent Selection**:
+- 90% of requests use cached racks (<100ms response time)
+- 10% scrape new racks for freshness (respects 5-second rate limit)
+- Weighted random selection (popular racks more likely)
+- 15 curated demo racks for fallback
+- Automatic database growth through user testing
+
+**API Endpoint**: `GET /api/racks/random`
+
 ## Known Limitations
 
-1. **Module I/O Detection**: Scraper doesn't parse individual inputs/outputs yet (TODO)
+1. **Module I/O Detection**: Scraper doesn't parse individual inputs/outputs (ModularGrid doesn't expose structured I/O data in HTML)
 2. **Vision Accuracy**: Module identification from images depends on lighting/angle quality
 3. **Patch Validation**: No runtime validation that suggested connections are physically possible (relies on Claude's understanding)
-4. **ModularGrid API**: No official API available; relies on page scraping
+4. **ModularGrid API**: No official API available; relies on respectful page scraping with rate limiting
 
 ## Development Workflow
 
@@ -209,13 +261,32 @@ When adding new features:
 4. **Test**: Add unit tests in `__tests__/`, E2E in `e2e/`
 5. **Run Linting**: Pre-commit hooks auto-fix with ESLint + Prettier
 
-## Debugging Tips
+## Logging & Observability
 
-- Use `lib/logger.ts` (Winston) for structured logging
-- API routes log extensively with emoji prefixes (🕷️ scraper, 🤖 AI, 🎸 patches)
+### Winston Structured Logging (`lib/logger.ts`)
+
+**All console.log replaced with Winston structured logging**:
+- `logger.info()` - General information (API calls, database operations)
+- `logger.warn()` - Warnings and deprecations
+- `logger.error()` - Errors with stack traces
+- `logger.debug()` - Detailed debugging information
+
+**Emoji Prefixes**:
+- 🕷️ Scraper operations
+- 🤖 AI operations
+- 🎸 Patch operations
+- 📊 Metrics and analytics
+- 🔍 Vision operations
+
+**Production**: Logs to `logs/error.log` and `logs/combined.log`
+
+### Debugging Tips
+
+- All API routes use Winston structured logging with contextual metadata
 - Test scraper independently: `app/api/test-scraper/route.ts`
 - Test patch generation: `app/api/test-patch-generation/route.ts`
 - Vision analysis test: `app/api/vision/analyze-rack/route.ts`
+- Database integration test: `npx tsx scripts/test-database-services.ts`
 
 ## Module Enrichment
 

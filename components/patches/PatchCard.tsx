@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import { type Patch } from '@/types/patch';
 
 interface PatchCardProps {
