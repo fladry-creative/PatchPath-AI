@@ -44,7 +44,7 @@ jobs:
 
       - name: Gemini Code Review
         if: steps.changed-files.outputs.any_changed == 'true'
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
