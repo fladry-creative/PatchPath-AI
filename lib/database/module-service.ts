@@ -20,9 +20,20 @@ export interface ModuleDocument extends Module {
 
 /**
  * Generate module ID from name and manufacturer
+ * Removes illegal Cosmos DB characters: / \ # ?
  */
 function generateModuleId(name: string, manufacturer: string): string {
-  return `${manufacturer.toLowerCase().replace(/\s+/g, '-')}_${name.toLowerCase().replace(/\s+/g, '-')}`;
+  const cleanManufacturer = manufacturer.toLowerCase()
+    .replace(/[\\/# ?]/g, '-')  // Replace illegal chars with dash
+    .replace(/\s+/g, '-')        // Replace spaces with dash
+    .replace(/-+/g, '-');        // Collapse multiple dashes
+
+  const cleanName = name.toLowerCase()
+    .replace(/[\\/# ?]/g, '-')   // Replace illegal chars with dash
+    .replace(/\s+/g, '-')        // Replace spaces with dash
+    .replace(/-+/g, '-');        // Collapse multiple dashes
+
+  return `${cleanManufacturer}_${cleanName}`;
 }
 
 /**

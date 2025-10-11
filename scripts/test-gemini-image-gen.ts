@@ -114,20 +114,8 @@ async function generateRealImage(scenario: typeof testScenarios[0]): Promise<voi
       model: 'gemini-2.5-flash-image'
     });
 
-    const result = await model.generateContent({
-      contents: [{
-        role: 'user',
-        parts: [{
-          text: scenario.prompt
-        }]
-      }],
-      generationConfig: {
-        // Specify aspect ratio (new feature Oct 2, 2025!)
-        responseModalities: 'image',
-        // @ts-ignore - new feature, types may not be updated
-        aspectRatio: scenario.aspectRatio
-      }
-    });
+    // Simple API call - just pass the prompt!
+    const result = await model.generateContent([scenario.prompt]);
 
     const response = await result.response;
     const duration = Date.now() - startTime;
