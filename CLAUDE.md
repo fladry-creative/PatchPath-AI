@@ -181,6 +181,133 @@ When users upload rack photos:
 3. Returns confidence scores for each identification
 4. Can be used to cross-reference ModularGrid data or analyze custom racks
 
+## AI-Native Chat System (Issue #35)
+
+### Architecture Overview
+
+**NO KEYWORD MATCHING** - The chat system uses pure AI-powered intent detection to understand user needs.
+
+#### Core Components
+
+**Session Management** (`lib/chat/session-state.ts`):
+
+- Redis-based session persistence with 24-hour TTL
+- Tracks rack context, patches, and conversation history
+- Anonymous user support (demo mode)
+- `getOrCreateSession()` - Seamless session handling
+
+**Intent Detection** (`lib/chat/intent-detector.ts`):
+
+- Claude Haiku classifies user intent from context
+- Supports: GENERATE_PATCH, ANALYZE_RACK, DEMO_REQUEST, CHAT, etc.
+- No keywords required - understands natural language
+- Confidence scoring with reasoning
+
+**URL Extraction** (`lib/chat/url-extractor.ts`):
+
+- Automatic ModularGrid URL detection in any message
+- Gibberish detection with multiple heuristics
+- Text analysis for intelligent routing
+
+**Random Rack Handler** (`lib/chat/random-rack-handler.ts`):
+
+- 15 curated demo racks for fallback
+- Humorous responses for gibberish input
+- Integration with `/api/racks/random` endpoint
+
+**Chat Handlers** (`lib/chat/chat-handlers.ts`):
+
+- `handleRackAnalysis()` - Auto-scrape URLs
+- `handlePatchGeneration()` - Generate from session context
+- `handleRandomRack()` - Gibberish/demo fallback
+- `handleConversationalChat()` - General AI conversation
+
+#### Flow Example
+
+```
+User: "DLXJFLDJLD"
+  ↓ Text Analysis
+  Gibberish detected
+  ↓ Random Rack Handler
+  "Cool vibes bro 😂 Let me pick a random rack..."
+  ↓ Auto-analyze random rack
+  "Found 42 modules! What do you want to create?"
+
+User: "ambient drone"
+  ↓ Intent Detection (AI)
+  Intent: GENERATE_PATCH (confidence: 0.95)
+  ↓ Patch Generation Handler
+  Generates patch using session rack data
+  ↓ Stream response
+  "🎉 Created: Dark Ambient Drone"
+```
+
+#### Chat API Route (`app/api/chat/patches/route.ts`)
+
+**Request**:
+
+```typescript
+{
+  messages: ChatMessage[],
+  sessionId?: string,  // Client provides this
+  rackUrl?: string     // Legacy support (auto-extracted)
+}
+```
+
+**Processing Steps**:
+
+1. Get or create session
+2. Analyze user input (URL extraction, gibberish detection)
+3. If URL found → auto-analyze rack
+4. Else → AI intent detection
+5. Route to appropriate handler
+6. Stream SSE response
+
+**Supported Intents**:
+
+- URL in message → Auto-analyze rack
+- "I want something dark" → Patch generation
+- "DLXJFLDJLD" → Random rack + humor
+- "what is FM synthesis?" → Conversational explanation
+- Empty/gibberish → Demo mode
+
+#### Session Storage
+
+**Redis Configuration**:
+
+```env
+REDIS_URL=redis://localhost:6379
+REDIS_PASSWORD=your-password
+REDIS_SESSION_TTL=86400  # 24 hours
+REDIS_MAX_RETRIES=3
+```
+
+**Docker Compose**:
+
+```bash
+docker-compose up redis  # Start Redis container
+```
+
+#### Testing the Chat System
+
+**Unit Tests** (106 passing):
+
+```bash
+npm test -- __tests__/lib/chat/
+npm test -- __tests__/lib/redis/
+```
+
+**Manual Testing**:
+
+1. Start Redis: `docker-compose up redis`
+2. Start app: `npm run dev`
+3. Navigate to chat interface
+4. Test scenarios:
+   - Paste ModularGrid URL (auto-analyzes)
+   - Type gibberish (gets random rack)
+   - Natural language ("create ambient patch")
+   - Technical questions ("explain FM synthesis")
+
 ## Path Aliasing
 
 TypeScript paths use `@/` prefix for root imports:
