@@ -11,9 +11,22 @@ const nextConfig: NextConfig = {
   experimental: {
     reactCompiler: true, // Auto-memoization, granular optimization
     serverActions: {
-      // Allow GitHub Codespaces and local origins for Server Actions
-      allowedOrigins: ['localhost:3000', '*.app.github.dev'],
+      // Allow GitHub Codespaces and local origins for Server Actions (all ports)
+      allowedOrigins: [
+        'localhost:3000',
+        'localhost:3001',
+        'localhost:3002',
+        'vigilant-space-couscous-9746pj7v4rrwh7944-3000.app.github.dev',
+        'vigilant-space-couscous-9746pj7v4rrwh7944-3001.app.github.dev',
+        'vigilant-space-couscous-9746pj7v4rrwh7944-3002.app.github.dev',
+      ],
     },
+  },
+
+  // Skip static optimization for error pages (Clerk + Next.js 15 compatibility)
+  skipTrailingSlashRedirect: true,
+  generateBuildId: async () => {
+    return `patchpath-build-${Date.now()}`;
   },
 
   // Turbopack Configuration (replaces experimental.turbo in Next.js 15+)
@@ -32,7 +45,10 @@ const nextConfig: NextConfig = {
   poweredByHeader: false,
   compress: true,
 
-  // Image Optimization (for future rack diagrams)
+  // Docker/Container Deployment
+  output: 'standalone', // Required for Docker deployments
+
+  // Image Optimization (for rack images and future diagrams)
   images: {
     formats: ['image/avif', 'image/webp'],
     deviceSizes: [640, 750, 828, 1080, 1200, 1920, 2048, 3840],
@@ -42,6 +58,12 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'modulargrid.net',
         pathname: '/**',
+      },
+      // NEW: CDN image support (vision-first architecture)
+      {
+        protocol: 'https',
+        hostname: 'cdn.modulargrid.net',
+        pathname: '/img/racks/**',
       },
     ],
   },

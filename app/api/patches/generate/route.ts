@@ -8,6 +8,7 @@ import { auth } from '@clerk/nextjs/server';
 import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
 import { analyzeRack, analyzeRackCapabilities } from '@/lib/scraper/analyzer';
 import { generatePatch, generatePatchVariations, isClaudeConfigured } from '@/lib/ai/claude';
+import { generatePatchDiagram, isGeminiConfigured } from '@/lib/ai/gemini';
 import { type Patch } from '@/types/patch';
 import logger from '@/lib/logger';
 import { savePatch } from '@/lib/database/patch-service';
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
       technique,
       genre,
       difficulty,
-      generateVariations
+      generateVariations,
     });
 
     // Step 1: Scrape rack
@@ -75,14 +76,46 @@ export async function POST(request: NextRequest) {
     // Set user ID
     patch.userId = userId;
 
-    // Step 3: Generate variations if requested
+    // Step 3: Generate AI diagram (graceful degradation if unavailable)
+    if (isGeminiConfigured()) {
+      try {
+        logger.info('🎨 Step 3: Generating AI diagram with Gemini');
+        const diagramResult = await generatePatchDiagram({
+          patch,
+          modules: parsedRack.modules,
+          aspectRatio: '1:1', // Default to Instagram-friendly square
+        });
+
+        // Attach diagram data to patch
+        patch.diagramData = diagramResult.imageData;
+        patch.diagramAspectRatio = diagramResult.aspectRatio;
+        patch.diagramGeneratedAt = new Date();
+        patch.diagramCost = diagramResult.cost;
+
+        logger.info('✅ AI diagram generated successfully', {
+          patchId: patch.id,
+          generationTime: diagramResult.generationTime,
+          cost: diagramResult.cost,
+        });
+      } catch (error) {
+        logger.warn('⚠️  Diagram generation failed, continuing without diagram', {
+          patchId: patch.id,
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+        // Continue without diagram - patch is still valid
+      }
+    } else {
+      logger.info('⏭️  Skipping diagram generation - Gemini not configured');
+    }
+
+    // Step 4: Generate variations if requested
     let variations: Patch[] = [];
     if (generateVariations) {
-      logger.info('🔄 Step 3: Generating variations');
+      logger.info('🔄 Step 4: Generating variations');
       variations = await generatePatchVariations(patch, parsedRack, capabilities, 3);
     }
 
-    // Step 4: Save patch to database (graceful degradation if DB unavailable)
+    // Step 5: Save patch to database (graceful degradation if DB unavailable)
     try {
       await savePatch(patch);
       logger.info('💾 Patch saved to database', {
@@ -106,7 +139,7 @@ export async function POST(request: NextRequest) {
       connectionCount: patch.connections.length,
       techniqueCount: patch.metadata.techniques.length,
       variationCount: variations.length,
-      duration
+      duration,
     });
 
     return NextResponse.json({
@@ -125,7 +158,7 @@ export async function POST(request: NextRequest) {
 
     logger.error('❌ Patch generation failed', {
       error: errorMessage,
-      stack: errorStack
+      stack: errorStack,
     });
 
     return NextResponse.json(

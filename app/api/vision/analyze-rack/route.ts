@@ -27,37 +27,73 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get form data
-    const formData = await request.formData();
-    const imageFile = formData.get('image') as File | null;
-    const enrichData = formData.get('enrich') === 'true';
-
-    if (!imageFile) {
-      return NextResponse.json(
-        {
-          error: 'No image provided',
-          message: 'Please upload an image file',
-          example: 'POST with multipart/form-data and "image" field',
-        },
-        { status: 400 }
-      );
-    }
-
-    logger.info('📸 Analyzing rack image', {
-      fileName: imageFile.name,
-      fileType: imageFile.type,
-      fileSize: imageFile.size,
-      enrich: enrichData
-    });
-
-    // Convert file to buffer
-    const arrayBuffer = await imageFile.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Determine image type
+    const contentType = request.headers.get('content-type') || '';
+    let buffer: Buffer;
     let imageType: 'image/jpeg' | 'image/png' | 'image/webp' = 'image/jpeg';
-    if (imageFile.type === 'image/png') imageType = 'image/png';
-    if (imageFile.type === 'image/webp') imageType = 'image/webp';
+    let enrichData = false;
+    let userId: string | null = null;
+
+    // Handle both JSON (base64) and FormData
+    if (contentType.includes('application/json')) {
+      // JSON with base64 image data
+      const body = await request.json();
+
+      if (!body.imageData) {
+        return NextResponse.json(
+          {
+            error: 'No image data provided',
+            message: 'Please provide base64 image data in the "imageData" field',
+          },
+          { status: 400 }
+        );
+      }
+
+      // Decode base64 to buffer
+      buffer = Buffer.from(body.imageData, 'base64');
+      imageType = body.imageType || 'image/jpeg';
+      enrichData = body.enrich === true;
+      userId = body.userId || null;
+
+      logger.info('📸 Analyzing rack image (base64)', {
+        imageType,
+        bufferSize: buffer.length,
+        enrich: enrichData,
+        userId,
+      });
+    } else {
+      // FormData with file upload
+      const formData = await request.formData();
+      const imageFile = formData.get('image') as File | null;
+      enrichData = formData.get('enrich') === 'true';
+      userId = (formData.get('userId') as string) || null;
+
+      if (!imageFile) {
+        return NextResponse.json(
+          {
+            error: 'No image provided',
+            message: 'Please upload an image file',
+            example: 'POST with multipart/form-data and "image" field',
+          },
+          { status: 400 }
+        );
+      }
+
+      logger.info('📸 Analyzing rack image (file upload)', {
+        fileName: imageFile.name,
+        fileType: imageFile.type,
+        fileSize: imageFile.size,
+        enrich: enrichData,
+        userId,
+      });
+
+      // Convert file to buffer
+      const arrayBuffer = await imageFile.arrayBuffer();
+      buffer = Buffer.from(arrayBuffer);
+
+      // Determine image type
+      if (imageFile.type === 'image/png') imageType = 'image/png';
+      if (imageFile.type === 'image/webp') imageType = 'image/webp';
+    }
 
     // Step 1: Vision analysis
     const startTime = Date.now();
@@ -66,7 +102,7 @@ export async function POST(request: NextRequest) {
 
     logger.info('✅ Vision analysis complete', {
       moduleCount: visionAnalysis.modules.length,
-      duration: visionTime
+      duration: visionTime,
     });
 
     // Step 2: Optional enrichment
@@ -75,7 +111,7 @@ export async function POST(request: NextRequest) {
 
     if (enrichData && visionAnalysis.modules.length > 0) {
       logger.info('🔎 Enriching modules', {
-        moduleCount: visionAnalysis.modules.length
+        moduleCount: visionAnalysis.modules.length,
       });
 
       const enrichStart = Date.now();
@@ -89,19 +125,20 @@ export async function POST(request: NextRequest) {
 
       logger.info('✅ Enrichment complete', {
         enrichedCount: enrichedModules?.length || 0,
-        duration: enrichmentTime
+        duration: enrichmentTime,
       });
     }
 
     return NextResponse.json({
       success: true,
+      analysis: visionAnalysis, // For wizard compatibility
+      visionAnalysis, // Keep for backward compatibility
       timing: {
         visionAnalysis: `${(visionTime / 1000).toFixed(2)}s`,
         enrichment: enrichData ? `${(enrichmentTime / 1000).toFixed(2)}s` : 'skipped',
         total: `${((visionTime + enrichmentTime) / 1000).toFixed(2)}s`,
       },
       modelInfo: getVisionModelInfo(),
-      visionAnalysis,
       enrichedModules,
       summary: {
         modulesDetected: visionAnalysis.modules.length,
@@ -119,7 +156,7 @@ export async function POST(request: NextRequest) {
 
     logger.error('❌ Vision analysis failed', {
       error: errorMessage,
-      stack: errorStack
+      stack: errorStack,
     });
 
     return NextResponse.json(

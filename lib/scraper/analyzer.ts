@@ -102,27 +102,32 @@ export function analyzeRack(rack: ParsedRack): RackAnalysis {
   const techniquesPossible: string[] = [];
   const warnings: string[] = [];
 
-  // Check for fundamental components
-  if (!capabilities.hasVCO) {
-    missingFundamentals.push('VCO');
-    suggestions.push('Add a VCO (oscillator) to generate sound sources');
-  }
+  // Check for fundamental components (ONLY for non-pure-video racks)
+  // Pure video racks don't need VCO/VCF/VCA - they use ramps/sync instead
+  const isPureVideoRack = capabilities.isVideoRack;
 
-  if (!capabilities.hasVCF) {
-    missingFundamentals.push('VCF');
-    suggestions.push('Add a VCF (filter) for subtractive synthesis');
-  } else {
-    techniquesPossible.push('Subtractive synthesis');
-  }
+  if (!isPureVideoRack) {
+    if (!capabilities.hasVCO) {
+      missingFundamentals.push('VCO');
+      suggestions.push('Add a VCO (oscillator) to generate sound sources');
+    }
 
-  if (!capabilities.hasVCA) {
-    missingFundamentals.push('VCA');
-    warnings.push('No VCA detected - you may not be able to control amplitude');
-  }
+    if (!capabilities.hasVCF) {
+      missingFundamentals.push('VCF');
+      suggestions.push('Add a VCF (filter) for subtractive synthesis');
+    } else {
+      techniquesPossible.push('Subtractive synthesis');
+    }
 
-  if (!capabilities.hasEnvelope) {
-    missingFundamentals.push('EG');
-    suggestions.push('Add an envelope generator for dynamic control');
+    if (!capabilities.hasVCA) {
+      missingFundamentals.push('VCA');
+      warnings.push('No VCA detected - you may not be able to control amplitude');
+    }
+
+    if (!capabilities.hasEnvelope) {
+      missingFundamentals.push('EG');
+      suggestions.push('Add an envelope generator for dynamic control');
+    }
   }
 
   // Determine possible techniques - AUDIO SYNTHESIS
@@ -204,7 +209,10 @@ export function analyzeRack(rack: ParsedRack): RackAnalysis {
       techniquesPossible.push('📹 External video processing & effects');
     }
 
-    if (capabilities.hasRampGenerator && capabilities.videoModuleTypes.includes('VideoProcessor')) {
+    if (
+      capabilities.hasRampGenerator &&
+      capabilities.videoModuleTypes?.includes('VideoProcessor')
+    ) {
       techniquesPossible.push('🌀 Raster manipulation & feedback loops');
       warnings.push('⚠️  Video feedback can be unstable/unpredictable - start with subtle amounts');
     }

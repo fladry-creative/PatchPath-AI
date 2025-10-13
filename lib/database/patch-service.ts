@@ -67,7 +67,7 @@ export async function getPatch(id: string, userId: string): Promise<Patch | null
     logger.debug('Patch retrieved', { patchId: id, userId });
 
     // Remove internal fields
-    const { partitionKey, ...patch } = resource;
+    const { partitionKey: _partitionKey, ...patch } = resource;
     return patch as Patch;
   } catch (error: unknown) {
     if (error && typeof error === 'object' && 'code' in error && error.code === 404) {
@@ -120,7 +120,7 @@ export async function listUserPatches(
     });
 
     // Remove internal fields
-    return resources.map(({ partitionKey, ...patch }) => patch as Patch);
+    return resources.map(({ partitionKey: _partitionKey, ...patch }) => patch as Patch);
   } catch (error) {
     logger.error('Failed to list user patches', {
       userId,
@@ -286,7 +286,7 @@ export async function searchPatches(userId: string, searchQuery: string): Promis
       resultCount: resources.length,
     });
 
-    return resources.map(({ partitionKey, ...patch }) => patch as Patch);
+    return resources.map(({ partitionKey: _partitionKey, ...patch }) => patch as Patch);
   } catch (error) {
     logger.error('Failed to search patches', {
       userId,
@@ -327,7 +327,7 @@ export async function getPatchesByRack(userId: string, rackId: string): Promise<
       count: resources.length,
     });
 
-    return resources.map(({ partitionKey, ...patch }) => patch as Patch);
+    return resources.map(({ partitionKey: _partitionKey, ...patch }) => patch as Patch);
   } catch (error) {
     logger.error('Failed to get patches by rack', {
       userId,

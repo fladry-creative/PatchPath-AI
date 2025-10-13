@@ -18,18 +18,70 @@ const MODEL = 'claude-sonnet-4-5'; // Sonnet 4.5: Better quality, still great pr
 const MAX_TOKENS = 4096;
 
 /**
- * Build system prompt for patch generation
+ * Build system prompt for patch generation (October 2025 update: comprehensive video synthesis support)
  */
 function buildSystemPrompt(): string {
-  return `You are an expert modular synthesizer patch designer. Your role is to create working, creative patches for users based on their specific rack configuration.
+  return `You are an expert modular synthesizer and video synthesis patch designer. Your role is to create working, creative patches for users based on their specific rack configuration. You understand BOTH audio synthesis (VCO/VCF/VCA) and video synthesis (ramps/sync/colorizers).
 
-KEY PRINCIPLES:
+KEY PRINCIPLES - UNIVERSAL:
 1. ONLY suggest connections using modules that exist in the user's rack
-2. Ensure signal flow makes sense (audio → audio, CV → CV parameters)
+2. Ensure signal flow makes sense (audio → audio, CV → CV parameters, video → video)
 3. Consider voltage ranges and compatibility
 4. Provide clear, numbered patching steps
 5. Explain WHY the routing works (educational)
 6. Be creative but practical
+
+KEY PRINCIPLES - VIDEO SYNTHESIS (CRITICAL):
+⚠️  VIDEO SYNTHESIS IS FUNDAMENTALLY DIFFERENT FROM AUDIO:
+
+1. **SYNC IS MANDATORY** (unlike audio which can free-run):
+   - Video systems REQUIRE a sync generator (e.g., LZX ESG3, Visual Cortex, Chromagnon)
+   - ALL patches MUST start with sync distribution to every video module
+   - Without sync, the image will tear, roll, or not display at all
+   - Format: "Step 1: Distribute sync from [sync module] to all video modules"
+
+2. **RAMPS ARE THE CORE BUILDING BLOCK** (like VCOs in audio):
+   - Ramp generators create linear gradients (horizontal/vertical)
+   - Ramps are combined via math/mixing to create complex imagery
+   - Common ramp modules: LZX Angles/Scrolls, Syntonie Rampes
+
+3. **HORIZONTAL vs VERTICAL CONFUSION** (counterintuitive!):
+   - Horizontal ramp → creates VERTICAL bars on screen
+   - Vertical ramp → creates HORIZONTAL bars on screen
+   - Reason: Ramp varies during scan direction (horizontal scan = vertical gradient)
+   - Always explain this clearly in patches to avoid confusion
+
+4. **VOLTAGE INCOMPATIBILITY** (audio ±5V vs video 0-1V):
+   - Video synthesis uses 0-1V unipolar signals (LZX Patchable Video Standard)
+   - Audio modules output ±5V bipolar signals
+   - Using audio in video context will CLIP/SATURATE (can be creative but warn user)
+   - Example warning: "Audio oscillator will clip video signal - expect hard edges"
+
+5. **VIDEO WORKFLOW** (typical signal path):
+
+   Sync Distribution → Ramp Generation → Colorization → Keying/Mixing → Encoding → Display
+
+   - Step 1: Always distribute sync first
+   - Step 2: Generate ramps (horizontal/vertical)
+   - Step 3: Process ramps (multiply, add, colorize)
+   - Step 4: Composite/mix multiple layers (if keyer available)
+   - Step 5: Encode to HDMI/composite for output
+   - Step 6: (Optional) Add feedback for evolving patterns (warn about instability)
+
+6. **VIDEO MODULE TYPES**:
+   - SyncGenerator: Master timing source (ESG3, Visual Cortex, Chromagnon)
+   - RampGenerator: Core pattern building (Angles, Scrolls, Rampes)
+   - Colorizer: Add RGB color (Passage, Contour)
+   - Keyer: Compositing layers (FKG3 - luma/chroma keying)
+   - VideoMixer: RGB matrix mixing (SMX3)
+   - VideoProcessor: Math, transforms, effects (Multiplier, Detail Extractor)
+   - VideoEncoder: Output to displays (ESG3, Visual Cortex)
+
+7. **HYBRID RACKS** (audio + video):
+   - Audio oscillators CAN modulate video (expect clipping)
+   - LFOs can modulate ramp speeds for animation
+   - Envelopes can gate video signals
+   - Always warn about voltage incompatibility but encourage experimentation
 
 OUTPUT FORMAT:
 You must respond with valid JSON in this exact structure:
@@ -83,9 +135,11 @@ function buildUserPrompt(
     .map((m) => `- ${m.name} by ${m.manufacturer} (${m.type}, ${m.hp}HP)`)
     .join('\n');
 
-  // Build capabilities summary
-  const capabilitiesSummary = `
-Capabilities:
+  // Build capabilities summary (October 2025 update: include video capabilities)
+  const isVideoOrHybridRack = capabilities.isVideoRack || capabilities.isHybridRack;
+
+  let capabilitiesSummary = `
+AUDIO SYNTHESIS CAPABILITIES:
 - VCO: ${capabilities.hasVCO ? 'Yes' : 'No'}
 - VCF: ${capabilities.hasVCF ? 'Yes' : 'No'}
 - VCA: ${capabilities.hasVCA ? 'Yes' : 'No'}
@@ -93,7 +147,31 @@ Capabilities:
 - Envelope: ${capabilities.hasEnvelope ? 'Yes' : 'No'}
 - Sequencer: ${capabilities.hasSequencer ? 'Yes' : 'No'}
 - Effects: ${capabilities.hasEffects ? 'Yes' : 'No'}
+`;
 
+  // Add video capabilities if this is a video or hybrid rack
+  if (isVideoOrHybridRack) {
+    capabilitiesSummary += `
+VIDEO SYNTHESIS CAPABILITIES:
+- Sync Generator: ${capabilities.hasVideoSync ? `Yes (${capabilities.videoSyncSource || 'unknown'})` : '⚠️  NO - CRITICAL MISSING!'}
+- Ramp Generator: ${capabilities.hasRampGenerator ? 'Yes' : 'No'}
+- Colorizer: ${capabilities.hasColorizer ? 'Yes' : 'No'}
+- Keyer: ${capabilities.hasKeyer ? 'Yes' : 'No'}
+- Video Encoder: ${capabilities.hasVideoEncoder ? 'Yes' : 'No'}
+- Video Decoder: ${capabilities.hasVideoDecoder ? 'Yes' : 'No'}
+- Rack Type: ${capabilities.isVideoRack ? 'Pure Video Synthesis' : 'Hybrid Audio+Video'}
+`;
+
+    if (!capabilities.hasVideoSync) {
+      capabilitiesSummary += `
+⚠️  CRITICAL: NO SYNC GENERATOR DETECTED
+This video rack is INCOMPLETE and will NOT produce a stable image without a sync source!
+Your patch suggestions should note this limitation and recommend adding a sync generator.
+`;
+    }
+  }
+
+  capabilitiesSummary += `
 Possible Techniques: ${analysis.techniquesPossible.join(', ')}
 `;
 
@@ -148,7 +226,7 @@ export async function generatePatch(
       technique: options?.technique,
       genre: options?.genre,
       difficulty: options?.difficulty,
-      moduleCount: rack.modules.length
+      moduleCount: rack.modules.length,
     });
 
     const systemPrompt = buildSystemPrompt();
@@ -181,7 +259,7 @@ export async function generatePatch(
     logger.info('✅ Claude response received', {
       responseLength: responseText.length,
       duration: responseTime,
-      model: MODEL
+      model: MODEL,
     });
 
     // Parse JSON (Claude might wrap in ```json blocks)
@@ -192,6 +270,13 @@ export async function generatePatch(
     }
 
     const patchData = JSON.parse(jsonText);
+
+    // Determine rack type
+    const rackType: 'video' | 'audio' | 'hybrid' = capabilities.isVideoRack
+      ? 'video'
+      : capabilities.isHybridRack
+        ? 'hybrid'
+        : 'audio';
 
     // Build full Patch object
     const patch: Patch = {
@@ -207,6 +292,8 @@ export async function generatePatch(
         techniques: patchData.techniques,
         genres: patchData.genres,
         userIntent,
+        rackType,
+        isVideoSynthesis: rackType === 'video' || rackType === 'hybrid',
       },
       connections: patchData.connections.map(
         (c: {
@@ -242,7 +329,7 @@ export async function generatePatch(
       stepCount: patch.patchingOrder.length,
       techniqueCount: patch.metadata.techniques.length,
       difficulty: patch.metadata.difficulty,
-      duration: totalTime
+      duration: totalTime,
     });
 
     return patch;
@@ -253,7 +340,7 @@ export async function generatePatch(
     logger.error('❌ Claude API error', {
       error: errorMessage,
       stack: errorStack,
-      model: MODEL
+      model: MODEL,
     });
     if (errorMessage.includes('JSON')) {
       throw new Error(
@@ -280,7 +367,7 @@ export async function generatePatchVariations(
     logger.info('🔄 Generating patch variations', {
       basePatchTitle: basePatch.metadata.title,
       variationCount: count,
-      model: MODEL
+      model: MODEL,
     });
 
     const systemPrompt = buildSystemPrompt();
@@ -329,6 +416,13 @@ Return a JSON array of ${count} patch objects with the same structure as before.
     const variationsData = JSON.parse(jsonText);
     const variations: Patch[] = [];
 
+    // Determine rack type (inherit from base patch)
+    const rackType: 'video' | 'audio' | 'hybrid' = capabilities.isVideoRack
+      ? 'video'
+      : capabilities.isHybridRack
+        ? 'hybrid'
+        : 'audio';
+
     for (const patchData of variationsData) {
       const patch: Patch = {
         id: `patch-${Date.now()}-${Math.random()}`,
@@ -344,6 +438,8 @@ Return a JSON array of ${count} patch objects with the same structure as before.
           techniques: patchData.techniques,
           genres: patchData.genres,
           userIntent: basePatch.metadata.userIntent,
+          rackType,
+          isVideoSynthesis: rackType === 'video' || rackType === 'hybrid',
         },
         connections: patchData.connections.map(
           (c: {
@@ -379,7 +475,7 @@ Return a JSON array of ${count} patch objects with the same structure as before.
     logger.info('✅ Generated variations successfully', {
       variationCount: variations.length,
       duration,
-      model: MODEL
+      model: MODEL,
     });
 
     return variations;
@@ -390,7 +486,7 @@ Return a JSON array of ${count} patch objects with the same structure as before.
     logger.error('❌ Variation generation error', {
       error: errorMessage,
       stack: errorStack,
-      model: MODEL
+      model: MODEL,
     });
 
     throw new Error(`Failed to generate variations: ${errorMessage}`);

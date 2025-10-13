@@ -35,12 +35,14 @@ export interface ParameterSuggestion {
 export interface PatchMetadata {
   title: string;
   description: string;
-  soundDescription?: string; // What it sounds like
+  soundDescription?: string; // What it sounds like (for audio) or visualDescription for video
   difficulty: DifficultyLevel;
   estimatedTime: number; // minutes
   techniques: string[]; // e.g., ["FM", "waveshaping", "generative"]
   genres: string[]; // e.g., ["ambient", "techno", "experimental"]
   userIntent?: string; // Original user request
+  rackType?: 'video' | 'audio' | 'hybrid'; // Type of rack (October 2025 update)
+  isVideoSynthesis?: boolean; // Quick check for video synthesis patches
 }
 
 export interface Patch {
@@ -57,6 +59,12 @@ export interface Patch {
   parentPatchId?: string; // If this is a variation
   createdAt: Date;
   updatedAt: Date;
+
+  // AI-generated diagram (October 2025 - Gemini integration)
+  diagramData?: string; // Base64-encoded PNG image data
+  diagramAspectRatio?: '1:1' | '16:9' | '9:16' | '4:3'; // Social media optimization
+  diagramGeneratedAt?: Date;
+  diagramCost?: number; // USD cost for tracking
 
   // User interaction
   userRating?: 'loved' | 'meh' | 'disaster';

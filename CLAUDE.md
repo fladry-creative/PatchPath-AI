@@ -6,6 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **PatchPath AI** is an AI-powered modular synthesizer companion that analyzes Eurorack racks and generates creative patch suggestions. It combines web scraping (ModularGrid), AI patch generation (Claude Sonnet 4.5), and vision analysis to help modular synth enthusiasts discover new patching possibilities.
 
+**28 Years in the Making** (1997-2025): From Nashville warehouse raves to AI-powered synthesis. PatchPath AI is part of the **Fladry Creative** ecosystem, built by **The Fladry Creative Group** (fladrycreative.co) × **Trash Team** (trashteam.tv). What started as The Ghetto Headliners throwing legendary parties in 1999 evolved through Grammy-winning engineering, 200+ DIY modules sold, and cross-country studio collaboration. Launched July 7, 2025 - 18 years to the day after the founders' wedding. Read the full story in `/app/about/page.tsx`.
+
+**NEW (October 2025)**: Comprehensive video synthesis support for LZX Industries and Syntonie modules! See [VIDEO_SYNTHESIS.md](docs/VIDEO_SYNTHESIS.md)
+
 **Tech Stack**: Next.js 15 (App Router), React 19, TypeScript, Clerk Auth, Anthropic Claude API, Google Gemini Vision, Azure Cosmos DB, Puppeteer scraping, Tailwind CSS v4
 
 ## Development Commands
@@ -151,6 +155,7 @@ Required `.env.local` keys (see `.env.example`):
 ### Demo Rack for Testing
 
 **Primary Demo Rack**:
+
 ```
 https://modulargrid.net/e/racks/view/2383104
 ```
@@ -209,6 +214,7 @@ Build and deployment documentation: See `CI-CD.md` and `DOCKER.md`
 ### Patch Persistence (`lib/database/patch-service.ts`)
 
 **CRUD Operations**:
+
 - `savePatch()` - Save/update patch with automatic userId partitioning
 - `getPatch()` - Retrieve single patch by ID
 - `listUserPatches()` - Get all user patches with pagination
@@ -225,6 +231,7 @@ Build and deployment documentation: See `CI-CD.md` and `DOCKER.md`
 ### Rack Caching (`lib/database/rack-service.ts`)
 
 **Cache Operations**:
+
 - `saveRack()` - Cache rack data with 30-day expiration
 - `getRack()` - Retrieve by ID or URL
 - `listRecentRacks()` - Get popular/recent racks
@@ -236,6 +243,7 @@ Build and deployment documentation: See `CI-CD.md` and `DOCKER.md`
 ### Random Rack Feature (`lib/scraper/random-rack.ts`)
 
 **Intelligent Selection**:
+
 - 90% of requests use cached racks (<100ms response time)
 - 10% scrape new racks for freshness (respects 5-second rate limit)
 - Weighted random selection (popular racks more likely)
@@ -266,12 +274,14 @@ When adding new features:
 ### Winston Structured Logging (`lib/logger.ts`)
 
 **All console.log replaced with Winston structured logging**:
+
 - `logger.info()` - General information (API calls, database operations)
 - `logger.warn()` - Warnings and deprecations
 - `logger.error()` - Errors with stack traces
 - `logger.debug()` - Detailed debugging information
 
 **Emoji Prefixes**:
+
 - 🕷️ Scraper operations
 - 🤖 AI operations
 - 🎸 Patch operations

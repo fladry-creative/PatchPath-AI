@@ -49,28 +49,37 @@ export async function getRandomRack(): Promise<ParsedRack> {
     if (useCache) {
       logger.debug('Attempting to use cached rack');
 
-      // Try to get from cached popular racks
-      const cachedRacks = await listRecentRacks(100);
+      try {
+        // Try to get from cached popular racks
+        const cachedRacks = await listRecentRacks(100);
 
-      if (cachedRacks.length > 0) {
-        // Weighted random selection (more popular racks have higher chance)
-        const randomRack = selectWeightedRandom(cachedRacks);
+        if (cachedRacks.length > 0) {
+          // Weighted random selection (more popular racks have higher chance)
+          const randomRack = selectWeightedRandom(cachedRacks);
 
-        await incrementUseCount(randomRack.id);
+          await incrementUseCount(randomRack.id).catch(() => {
+            // Ignore increment errors
+            logger.debug('Failed to increment use count (database unavailable)');
+          });
 
-        cacheHitCount++;
+          cacheHitCount++;
 
-        logger.info('Random rack from cache', {
-          rackId: randomRack.id,
-          url: randomRack.url,
-          useCount: randomRack.useCount + 1,
-          moduleCount: randomRack.parsedData.modules.length,
-          cacheHitRate: `${Math.round((cacheHitCount / (cacheHitCount + cacheMissCount)) * 100)}%`,
+          logger.info('Random rack from cache', {
+            rackId: randomRack.id,
+            url: randomRack.url,
+            useCount: randomRack.useCount + 1,
+            moduleCount: randomRack.parsedData.modules.length,
+            cacheHitRate: `${Math.round((cacheHitCount / (cacheHitCount + cacheMissCount)) * 100)}%`,
+          });
+
+          return randomRack.parsedData;
+        } else {
+          logger.info('Cache is empty, falling back to scraping');
+        }
+      } catch (dbError) {
+        logger.warn('Database unavailable, falling back to scraping', {
+          error: dbError instanceof Error ? dbError.message : String(dbError),
         });
-
-        return randomRack.parsedData;
-      } else {
-        logger.info('Cache is empty, falling back to scraping');
       }
     }
 
@@ -113,10 +122,14 @@ async function scrapeRandomRack(): Promise<ParsedRack> {
   const capabilities = analyzeRackCapabilities(rack.modules);
   const analysis = analyzeRack(rack);
 
-  // Save to cache
-  await saveRack(rack, capabilities, analysis);
+  // Save to cache (non-blocking, graceful degradation)
+  saveRack(rack, capabilities, analysis).catch((saveError) => {
+    logger.warn('Failed to cache rack (database unavailable)', {
+      error: saveError instanceof Error ? saveError.message : String(saveError),
+    });
+  });
 
-  logger.info('Random rack scraped and cached', {
+  logger.info('Random rack scraped', {
     url: randomUrl,
     moduleCount: rack.modules.length,
     totalHP: capabilities.totalHP,
@@ -135,24 +148,30 @@ async function getFallbackRack(): Promise<ParsedRack> {
   const fallbackUrl = DEMO_RACKS[0];
 
   try {
-    // Try to get from cache first
-    const rackId = fallbackUrl.match(/\/view\/(\d+)/)?.[1];
-    if (rackId) {
-      const cached = await getRack(rackId);
-      if (cached) {
-        logger.info('Fallback rack from cache', { url: fallbackUrl });
-        return cached.parsedData;
+    // Try to get from cache first (but don't fail if database unavailable)
+    try {
+      const rackId = fallbackUrl.match(/\/view\/(\d+)/)?.[1];
+      if (rackId) {
+        const cached = await getRack(rackId);
+        if (cached) {
+          logger.info('Fallback rack from cache', { url: fallbackUrl });
+          return cached.parsedData;
+        }
       }
+    } catch {
+      logger.debug('Database unavailable for fallback cache check');
     }
 
-    // Not in cache, scrape it
+    // Not in cache (or database unavailable), scrape it
     logger.info('Scraping fallback rack', { url: fallbackUrl });
     const rack = await scrapeModularGridRack(fallbackUrl);
 
-    // Save to cache
+    // Save to cache (non-blocking, graceful degradation)
     const capabilities = analyzeRackCapabilities(rack.modules);
     const analysis = analyzeRack(rack);
-    await saveRack(rack, capabilities, analysis);
+    saveRack(rack, capabilities, analysis).catch(() => {
+      logger.debug('Failed to cache fallback rack (database unavailable)');
+    });
 
     return rack;
   } catch (error) {

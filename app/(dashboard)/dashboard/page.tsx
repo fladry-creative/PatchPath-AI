@@ -1,7 +1,16 @@
-import { UserButton } from '@clerk/nextjs';
 import { currentUser } from '@clerk/nextjs/server';
 import { redirect } from 'next/navigation';
 import { PatchDashboard } from '@/components/patches/PatchDashboard';
+import { DashboardHeader } from '@/components/dashboard/DashboardHeader';
+import { QuickActions } from '@/components/dashboard/QuickActions';
+
+const greetings = [
+  'Ready to make some noise?',
+  "Let's patch something weird.",
+  'Time to explore infinite sonic possibilities.',
+  'What chaos shall we create today?',
+  'Your modules are waiting.',
+];
 
 export default async function DashboardPage() {
   const user = await currentUser();
@@ -10,25 +19,13 @@ export default async function DashboardPage() {
     redirect('/sign-in');
   }
 
+  // Random greeting for personality
+  const greeting = greetings[Math.floor(Math.random() * greetings.length)];
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
       {/* Header */}
-      <header className="border-b border-white/10 bg-black/20 backdrop-blur-sm">
-        <div className="container mx-auto flex items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold text-white">🎸 PatchPath AI</h1>
-          </div>
-          <div className="flex items-center gap-4">
-            <UserButton
-              appearance={{
-                elements: {
-                  avatarBox: 'w-10 h-10',
-                },
-              }}
-            />
-          </div>
-        </div>
-      </header>
+      <DashboardHeader />
 
       {/* Main Content */}
       <main className="container mx-auto px-4 py-12">
@@ -36,15 +33,18 @@ export default async function DashboardPage() {
           {/* Welcome Section */}
           <div className="mb-12 text-center">
             <h2 className="mb-4 text-4xl font-bold text-white">
-              Welcome back, {user.firstName || 'Modular Enthusiast'}! 👋
+              Welcome back, {user.firstName || 'Patch Addict'}! 🎸
             </h2>
-            <p className="text-xl text-slate-300">
-              Ready to explore your rack&apos;s infinite sonic possibilities?
-            </p>
+            <p className="text-xl text-slate-300">{greeting}</p>
           </div>
 
+          {/* Quick Actions */}
+          <QuickActions />
+
           {/* Patch Dashboard - THE REAL DEAL */}
-          <PatchDashboard />
+          <div id="patch-form">
+            <PatchDashboard />
+          </div>
         </div>
       </main>
     </div>

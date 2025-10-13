@@ -126,9 +126,14 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
   let browser: Browser | null = null;
 
   try {
-    // Validate URL
-    if (!url.includes('modulargrid.net/e/racks/view/')) {
-      throw new Error('Invalid ModularGrid rack URL');
+    // Validate URL (be lenient with different formats)
+    const normalizedUrl = url.trim();
+
+    // Check if it's a valid ModularGrid rack URL
+    if (!normalizedUrl.includes('modulargrid.net') || !normalizedUrl.includes('/racks/view/')) {
+      throw new Error(
+        'Invalid ModularGrid rack URL. Expected format: https://modulargrid.net/e/racks/view/[ID]'
+      );
     }
 
     // Launch browser
@@ -142,10 +147,10 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     // Set user agent to avoid detection
     await page.setUserAgent('Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36');
 
-    logger.info('🕷️  Scraping ModularGrid rack', { url });
+    logger.info('🕷️  Scraping ModularGrid rack', { url: normalizedUrl });
 
     // Navigate to page
-    await page.goto(url, {
+    await page.goto(normalizedUrl, {
       waitUntil: 'networkidle0',
       timeout: 30000,
     });
@@ -273,7 +278,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     });
 
     // Extract rack metadata
-    const rackId = url.match(/\/view\/(\d+)/)?.[1] || 'unknown';
+    const rackId = normalizedUrl.match(/\/view\/(\d+)/)?.[1] || 'unknown';
     const rackName = await page.evaluate(() => {
       return document.querySelector('.rack-name, h1')?.textContent?.trim() || 'Untitled Rack';
     });
@@ -301,7 +306,7 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     });
 
     const parsedRack: ParsedRack = {
-      url,
+      url: normalizedUrl,
       rows,
       modules,
       metadata: {
@@ -323,12 +328,12 @@ export async function scrapeModularGridRack(url: string): Promise<ParsedRack> {
     const errorStack = error instanceof Error ? error.stack : undefined;
 
     logger.error('❌ Scraping failed', {
-      url,
+      url: url || 'unknown',
       error: errorMessage,
       stack: errorStack,
     });
 
-    throw new Error(`Failed to scrape ModularGrid rack: ${error}`);
+    throw new Error(`Failed to scrape ModularGrid rack: ${errorMessage}`);
   } finally {
     if (browser) {
       await browser.close();
