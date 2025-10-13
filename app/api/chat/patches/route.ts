@@ -1,208 +1,165 @@
+/**
+ * AI-Native Chat API Route
+ * Streaming chat endpoint with intelligent intent detection
+ * NO KEYWORD MATCHING - Pure AI-powered conversation routing
+ */
+
 import type { NextRequest } from 'next/server';
-import Anthropic from '@anthropic-ai/sdk';
-import { scrapeModularGridRack } from '@/lib/scraper/modulargrid';
-import { analyzeRackCapabilities, analyzeRack } from '@/lib/scraper/analyzer';
-import { generatePatch } from '@/lib/ai/claude';
-import logger from '@/lib/logger';
 import { auth } from '@clerk/nextjs/server';
-import { savePatch } from '@/lib/database/patch-service';
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY || '',
-});
-
-const MODEL = 'claude-sonnet-4-5';
+import logger from '@/lib/logger';
+import { getOrCreateSession, addMessage, type ChatSession } from '@/lib/chat/session-state';
+import { detectIntent, Intent } from '@/lib/chat/intent-detector';
+import { extractModularGridUrl, analyzeUserInput } from '@/lib/chat/url-extractor';
+import {
+  handleRackAnalysis,
+  handlePatchGeneration,
+  handleRandomRack,
+  handleConversationalChat,
+} from '@/lib/chat/chat-handlers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const encoder = new TextEncoder();
 
 interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
 
+interface ChatRequest {
+  messages: ChatMessage[];
+  sessionId?: string; // Frontend provides this
+  rackUrl?: string; // Legacy support (will be auto-extracted)
+}
+
 /**
- * Streaming chat endpoint for conversational patch generation
+ * POST /api/chat/patches
+ * AI-native streaming chat with automatic intent detection
  */
 export async function POST(request: NextRequest) {
-  const encoder = new TextEncoder();
   let sessionUserId: string | null = null;
+  let session: ChatSession | null = null;
 
   try {
-    // Get authenticated user
+    // Get authenticated user (allow anonymous for demo mode)
     const { userId } = await auth();
     sessionUserId = userId;
 
-    if (!userId) {
-      return new Response('Unauthorized', { status: 401 });
-    }
-
-    const { messages, rackUrl } = (await request.json()) as {
-      messages: ChatMessage[];
-      rackUrl?: string;
-    };
+    // Parse request
+    const body = (await request.json()) as ChatRequest;
+    const { messages, sessionId: clientSessionId } = body;
 
     if (!messages || messages.length === 0) {
       return new Response('No messages provided', { status: 400 });
     }
 
-    logger.info('💬 Chat session started', {
-      userId,
+    const lastUserMessage = messages[messages.length - 1];
+    if (!lastUserMessage || lastUserMessage.role !== 'user') {
+      return new Response('Last message must be from user', { status: 400 });
+    }
+
+    logger.info('💬 Chat request received', {
+      userId: userId || 'anonymous',
       messageCount: messages.length,
-      hasRackUrl: !!rackUrl,
+      sessionId: clientSessionId,
+    });
+
+    // Get or create session
+    const sessionIdToUse =
+      clientSessionId || `session-${Date.now()}-${Math.random().toString(36).substring(7)}`;
+
+    session = await getOrCreateSession(sessionIdToUse, userId);
+
+    if (!session) {
+      throw new Error('Failed to create session');
+    }
+
+    // Add user message to session history
+    await addMessage(session.sessionId, {
+      role: 'user',
+      content: lastUserMessage.content,
+      timestamp: new Date(),
     });
 
     // Create streaming response
     const stream = new ReadableStream({
       async start(controller) {
         try {
-          // Build system prompt for conversational assistant
-          const systemPrompt = `You are a friendly, knowledgeable modular synthesizer patch design assistant. Your goal is to help users create amazing patches through natural conversation.
+          // 1. ANALYZE USER INPUT - Extract URL, detect gibberish
+          const textAnalysis = analyzeUserInput(lastUserMessage.content);
 
-CONVERSATION STYLE:
-- Be warm, enthusiastic, and encouraging
-- Ask clarifying questions if needed
-- Explain technical concepts in accessible ways
-- Use emojis occasionally for personality (🎸 🎛️ 🔊 ✨)
-- Keep responses concise but informative
+          logger.debug('🔍 Text analysis', {
+            sessionId: session!.sessionId,
+            analysis: textAnalysis,
+          });
 
-CAPABILITIES:
-1. You can help users describe what they want to create
-2. You can analyze their ModularGrid rack (if provided)
-3. You can generate detailed patch instructions
-4. You can explain synthesis techniques
-5. You can suggest creative ideas
+          // 2. AUTO-EXTRACT URL AND TRIGGER ANALYSIS
+          if (textAnalysis.hasUrl && textAnalysis.url) {
+            // User shared a ModularGrid URL - analyze it immediately!
+            const newUrl = textAnalysis.url;
 
-PATCH GENERATION WORKFLOW:
-When a user is ready to generate a patch:
-1. Confirm you have their rack URL (if not, ask for it)
-2. Confirm you understand what they want to create
-3. Respond with: "Let me generate that patch for you!" followed by [GENERATE_PATCH]
-4. The system will then create the actual patch
+            // Only analyze if it's a new URL
+            if (session!.rackData?.rackUrl !== newUrl) {
+              await handleRackAnalysis(newUrl, session!, controller, userId);
 
-IMPORTANT:
-- You are the conversational interface, not the patch generator itself
-- When ready to generate, use the [GENERATE_PATCH] marker
-- Don't try to list cable connections yourself - let the patch generation system handle that
-
-Be helpful, creative, and fun! 🎸`;
-
-          // Detect if we should generate a patch
-          const lastUserMessage = messages[messages.length - 1];
-          const shouldGeneratePatch =
-            lastUserMessage.role === 'user' &&
-            rackUrl &&
-            (lastUserMessage.content.toLowerCase().includes('generate') ||
-              lastUserMessage.content.toLowerCase().includes('create') ||
-              lastUserMessage.content.toLowerCase().includes('make') ||
-              lastUserMessage.content.toLowerCase().includes('build'));
-
-          // If we should generate a patch, do it!
-          if (shouldGeneratePatch) {
-            logger.info('🎨 Detected patch generation intent', { userId, rackUrl });
-
-            // Send thinking message
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({ type: 'content', content: 'Great! Let me design that patch for you...\n\n🎛️ Analyzing your rack...\n' })}\n\n`
-              )
-            );
-
-            try {
-              // Scrape and analyze rack
-              const rackData = await scrapeModularGridRack(rackUrl);
-              const capabilities = analyzeRackCapabilities(rackData);
-              const analysis = analyzeRack(capabilities, rackData);
-
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({ type: 'content', content: `✅ Found ${rackData.modules.length} modules\n🎸 Generating your patch...\n\n` })}\n\n`
-                )
-              );
-
-              // Generate patch using AI
-              const patch = await generatePatch(
-                rackData,
-                capabilities,
-                analysis,
-                lastUserMessage.content,
-                {
-                  difficulty: 'intermediate',
-                }
-              );
-
-              // Save patch to database
-              patch.userId = userId;
-              const savedPatch = await savePatch(patch);
-
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({ type: 'content', content: `🎉 Patch created: **${savedPatch.metadata.title}**\n\n${savedPatch.metadata.description}\n\nCheck out the full patch below!` })}\n\n`
-                )
-              );
-
-              // Send patch data
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ type: 'patch', patch: savedPatch })}\n\n`)
-              );
-
-              controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
-              controller.close();
-              return;
-            } catch (patchError) {
-              logger.error('❌ Patch generation failed in chat', {
-                error: patchError instanceof Error ? patchError.message : 'Unknown',
-                userId,
-              });
-
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({ type: 'error', error: 'Failed to generate patch. Please check your rack URL and try again.' })}\n\n`
-                )
-              );
+              // Done with this request
               controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
               controller.close();
               return;
             }
           }
 
-          // Regular conversation - stream Claude response
-          const stream = await anthropic.messages.stream({
-            model: MODEL,
-            max_tokens: 1024,
-            system: systemPrompt,
-            messages: messages.map((m) => ({
-              role: m.role,
-              content: m.content,
-            })),
+          // 3. DETECT INTENT USING AI
+          const intentResult = await detectIntent(lastUserMessage.content, session!);
+
+          logger.info('🎯 Intent detected', {
+            sessionId: session!.sessionId,
+            intent: intentResult.intent,
+            confidence: intentResult.confidence,
           });
 
-          // Stream the response
-          for await (const chunk of stream) {
-            if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-              const text = chunk.delta.text;
+          // 4. ROUTE BASED ON INTENT (NO KEYWORDS!)
+          switch (intentResult.intent) {
+            case Intent.GENERATE_PATCH:
+              // User wants to generate a patch
+              await handlePatchGeneration(session!, lastUserMessage.content, controller, userId);
+              break;
 
-              // Send text chunk to client
-              controller.enqueue(
-                encoder.encode(`data: ${JSON.stringify({ type: 'content', content: text })}\n\n`)
-              );
-            }
+            case Intent.DEMO_REQUEST:
+            case Intent.UNKNOWN:
+              // User sent gibberish OR explicitly wants demo/random rack
+              await handleRandomRack(session!, controller, textAnalysis.isGibberish);
+              break;
+
+            case Intent.CHAT:
+            case Intent.EXPLAIN_TECHNIQUE:
+            default:
+              // General conversation or questions
+              await handleConversationalChat(session!, controller);
+              break;
           }
 
           // Done
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
           controller.close();
 
-          logger.info('✅ Chat response sent', { userId, messageCount: messages.length });
-        } catch (error) {
-          logger.error('❌ Chat stream error', {
-            error: error instanceof Error ? error.message : 'Unknown',
-            userId: sessionUserId,
+          logger.info('✅ Chat response complete', {
+            sessionId: session!.sessionId,
+            intent: intentResult.intent,
+          });
+        } catch (streamError) {
+          logger.error('❌ Stream error', {
+            error: streamError instanceof Error ? streamError.message : 'Unknown',
+            sessionId: session?.sessionId,
           });
 
           controller.enqueue(
             encoder.encode(
-              `data: ${JSON.stringify({ type: 'error', error: 'Something went wrong. Please try again.' })}\n\n`
+              `data: ${JSON.stringify({
+                type: 'error',
+                error: 'Something went wrong. Please try again.',
+              })}\n\n`
             )
           );
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
@@ -222,6 +179,7 @@ Be helpful, creative, and fun! 🎸`;
     logger.error('❌ Chat API error', {
       error: error instanceof Error ? error.message : 'Unknown',
       userId: sessionUserId,
+      sessionId: session?.sessionId,
     });
 
     return new Response(

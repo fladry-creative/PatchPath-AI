@@ -191,6 +191,46 @@ export async function getSession(sessionId: string): Promise<ChatSession | null>
 }
 
 /**
+ * Get or create session (helper for chat API)
+ * Retrieves existing session or creates new one if not found
+ */
+export async function getOrCreateSession(
+  sessionId: string,
+  userId: string | null
+): Promise<ChatSession> {
+  // Try to get existing session
+  const existingSession = await getSession(sessionId);
+
+  if (existingSession) {
+    return existingSession;
+  }
+
+  // Create new session with the provided ID
+  const isDemoMode = !userId;
+  const newSession = await createSession(userId, isDemoMode);
+
+  // Override the generated ID with the one provided by client
+  newSession.sessionId = sessionId;
+
+  // Save with client's session ID
+  const redis = await getRedisClient();
+  if (redis) {
+    try {
+      const key = getSessionKey(sessionId);
+      await redis.setex(key, newSession.ttl, serializeSession(newSession));
+      logger.debug('✅ New session saved with custom ID', { sessionId });
+    } catch (error) {
+      logger.warn('⚠️ Failed to save new session with custom ID', {
+        error: error instanceof Error ? error.message : String(error),
+        sessionId,
+      });
+    }
+  }
+
+  return newSession;
+}
+
+/**
  * Update session with partial data
  */
 export async function updateSession(
