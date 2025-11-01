@@ -6,7 +6,6 @@ const config = {
   moduleNameMapper: {
     '^@/(.*)$': '<rootDir>/$1',
     '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
-    '^uuid$': require.resolve('uuid'),
   },
   transform: {
     '^.+\\.(ts|tsx)$': [

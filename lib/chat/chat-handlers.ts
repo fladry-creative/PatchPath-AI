@@ -10,6 +10,8 @@ import { savePatch } from '@/lib/database/patch-service';
 import logger from '@/lib/logger';
 import { type ChatSession, updateSession } from './session-state';
 import { type Patch } from '@/types/patch';
+import { refinePatch, handleSaveIntent, handleStartFreshIntent, handleVariationsIntent, checkSpecialIntents } from './patch-refinement';
+import { detectSaveIntent } from './save-detector';
 
 /**
  * Stream controller type for sending updates to client
@@ -348,6 +350,341 @@ Be helpful, creative, and fun! 🎸`;
 
     sendSSE(controller, 'error', {
       error: 'Failed to generate response. Please try again.',
+    });
+  }
+}
+
+/**
+ * Handle patch refinement intent
+ * Refines existing patch based on user feedback
+ *
+ * @param session - Current chat session (must have currentPatch)
+ * @param userFeedback - What the user wants to change
+ * @param controller - Stream controller for updates
+ * @param userId - Optional user ID for saving patch
+ */
+export async function handlePatchRefinement(
+  session: ChatSession,
+  userFeedback: string,
+  controller: StreamController,
+  userId?: string | null
+): Promise<void> {
+  try {
+    // Validate session has current patch
+    if (!session.currentPatch || !session.rackData) {
+      logger.warn('⚠️ Patch refinement attempted without current patch', {
+        sessionId: session.sessionId,
+      });
+
+      sendSSE(controller, 'content', {
+        content: '⚠️ I need a patch to refine first. Let me generate one for you!\n',
+      });
+
+      // Fallback to patch generation
+      await handlePatchGeneration(session, userFeedback, controller, userId);
+      return;
+    }
+
+    logger.info('🔧 Starting patch refinement', {
+      sessionId: session.sessionId,
+      patchTitle: session.currentPatch.metadata.title,
+      userFeedback,
+    });
+
+    sendSSE(controller, 'content', {
+      content: '🔧 Refining your patch...\n',
+    });
+
+    // Refine the patch
+    const result = await refinePatch(session.currentPatch, userFeedback, session.rackData);
+
+    if (!result.success) {
+      sendSSE(controller, 'content', {
+        content: `❌ ${result.message}\n`,
+      });
+      return;
+    }
+
+    // Update session with refined patch
+    if (result.updatedPatch) {
+      // Save previous patch to history for undo
+      const previousPatch = session.currentPatch;
+      
+      // Update session
+      await updateSession(session.sessionId, {
+        currentPatch: result.updatedPatch,
+        patchHistory: [...session.patchHistory, previousPatch],
+        modifications: [...session.modifications, result.modification!],
+      });
+
+      // Send update message
+      sendSSE(controller, 'content', {
+        content: `${result.message}\n\n`,
+      });
+
+      // Send updated patch
+      sendSSE(controller, 'patch', { patch: result.updatedPatch });
+
+      // Ask for next feedback
+      sendSSE(controller, 'content', {
+        content: 'How does that sound? Want to make any other changes?\n',
+      });
+
+      logger.info('✅ Patch refinement complete', {
+        sessionId: session.sessionId,
+        patchTitle: result.updatedPatch.metadata.title,
+      });
+    }
+
+  } catch (error) {
+    logger.error('❌ Patch refinement failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+      sessionId: session.sessionId,
+    });
+
+    sendSSE(controller, 'error', {
+      error: 'Failed to refine patch. Please try again.',
+    });
+  }
+}
+
+/**
+ * Handle save patch intent
+ * Saves current patch to user's cookbook
+ *
+ * @param session - Current chat session (must have currentPatch)
+ * @param controller - Stream controller for updates
+ * @param userId - User ID for saving patch
+ */
+export async function handlePatchSave(
+  session: ChatSession,
+  controller: StreamController,
+  userId: string
+): Promise<void> {
+  try {
+    // Validate session has current patch
+    if (!session.currentPatch) {
+      logger.warn('⚠️ Patch save attempted without current patch', {
+        sessionId: session.sessionId,
+      });
+
+      sendSSE(controller, 'content', {
+        content: '⚠️ No patch to save yet! Let me generate one for you.\n',
+      });
+      return;
+    }
+
+    logger.info('💾 Starting patch save', {
+      sessionId: session.sessionId,
+      patchTitle: session.currentPatch.metadata.title,
+      userId,
+    });
+
+    sendSSE(controller, 'content', {
+      content: '💾 Saving your patch...\n',
+    });
+
+    // Handle save intent
+    const saveResult = handleSaveIntent(
+      session.currentPatch,
+      session.modifications,
+      session.messages.map(m => m.content)
+    );
+
+    if (!saveResult.shouldSave) {
+      sendSSE(controller, 'content', {
+        content: '❌ Could not save patch. Please try again.\n',
+      });
+      return;
+    }
+
+    // Update patch with new name
+    const updatedPatch = {
+      ...session.currentPatch,
+      metadata: {
+        ...session.currentPatch.metadata,
+        title: saveResult.patchName!,
+      },
+      userId,
+      saved: true,
+    };
+
+    // Save to database
+    const savedPatch = await savePatch(updatedPatch);
+
+    // Update session
+    await updateSession(session.sessionId, {
+      currentPatch: savedPatch,
+    });
+
+    // Send confirmation
+    sendSSE(controller, 'content', {
+      content: `${saveResult.confirmationMessage}\n`,
+    });
+
+    logger.info('✅ Patch saved successfully', {
+      sessionId: session.sessionId,
+      patchId: savedPatch.id,
+      patchName: saveResult.patchName,
+    });
+
+  } catch (error) {
+    logger.error('❌ Patch save failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+      sessionId: session.sessionId,
+    });
+
+    sendSSE(controller, 'error', {
+      error: 'Failed to save patch. Please try again.',
+    });
+  }
+}
+
+/**
+ * Handle start fresh intent
+ * Clears current patch and starts new generation
+ *
+ * @param session - Current chat session
+ * @param controller - Stream controller for updates
+ * @param userId - Optional user ID
+ */
+export async function handleStartFresh(
+  session: ChatSession,
+  controller: StreamController,
+  userId?: string | null
+): Promise<void> {
+  try {
+    logger.info('🔄 Starting fresh', {
+      sessionId: session.sessionId,
+    });
+
+    // Clear current patch and modifications
+    await updateSession(session.sessionId, {
+      currentPatch: undefined,
+      modifications: [],
+    });
+
+    // Send message
+    const result = handleStartFreshIntent();
+    sendSSE(controller, 'content', {
+      content: `${result.message}\n`,
+    });
+
+    logger.info('✅ Started fresh', {
+      sessionId: session.sessionId,
+    });
+
+  } catch (error) {
+    logger.error('❌ Start fresh failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+      sessionId: session.sessionId,
+    });
+
+    sendSSE(controller, 'error', {
+      error: 'Failed to start fresh. Please try again.',
+    });
+  }
+}
+
+/**
+ * Handle variations intent
+ * Generates variations of current patch
+ *
+ * @param session - Current chat session (must have currentPatch)
+ * @param controller - Stream controller for updates
+ * @param userId - Optional user ID
+ */
+export async function handlePatchVariations(
+  session: ChatSession,
+  controller: StreamController,
+  userId?: string | null
+): Promise<void> {
+  try {
+    // Validate session has current patch and rack data
+    if (!session.currentPatch || !session.rackData || !session.capabilities || !session.analysis) {
+      logger.warn('⚠️ Patch variations attempted without current patch or rack data', {
+        sessionId: session.sessionId,
+      });
+
+      sendSSE(controller, 'content', {
+        content: '⚠️ I need a patch and rack to generate variations. Let me help you get started!\n',
+      });
+      return;
+    }
+
+    logger.info('🎨 Starting patch variations', {
+      sessionId: session.sessionId,
+      patchTitle: session.currentPatch.metadata.title,
+    });
+
+    sendSSE(controller, 'content', {
+      content: '🎨 Generating variations...\n',
+    });
+
+    // Generate variations using existing patch generation
+    const variations: Patch[] = [];
+    const variationIntents = [
+      'Make it darker and more atmospheric',
+      'Add more rhythmic elements and movement',
+      'Create a brighter, more melodic version',
+      'Make it more experimental and chaotic',
+      'Simplify it for a cleaner sound',
+    ];
+
+    for (const intent of variationIntents) {
+      try {
+        const variation = await generatePatch(
+          session.rackData,
+          session.capabilities,
+          session.analysis,
+          intent,
+          { difficulty: 'intermediate' }
+        );
+        variations.push(variation);
+      } catch (error) {
+        logger.warn('⚠️ Failed to generate variation', {
+          intent,
+          error: error instanceof Error ? error.message : 'Unknown',
+        });
+      }
+    }
+
+    if (variations.length === 0) {
+      sendSSE(controller, 'content', {
+        content: '❌ Could not generate variations. Please try again.\n',
+      });
+      return;
+    }
+
+    // Send variations
+    const result = handleVariationsIntent();
+    sendSSE(controller, 'content', {
+      content: `${result.message}\n`,
+    });
+
+    // Send each variation
+    for (const variation of variations) {
+      sendSSE(controller, 'patch', { patch: variation });
+    }
+
+    // Ask which one they like
+    sendSSE(controller, 'content', {
+      content: '\nWhich variation interests you most? You can say "make it darker" or "I like the second one" to refine any of them!\n',
+    });
+
+    logger.info('✅ Patch variations complete', {
+      sessionId: session.sessionId,
+      variationCount: variations.length,
+    });
+
+  } catch (error) {
+    logger.error('❌ Patch variations failed', {
+      error: error instanceof Error ? error.message : 'Unknown',
+      sessionId: session.sessionId,
+    });
+
+    sendSSE(controller, 'error', {
+      error: 'Failed to generate variations. Please try again.',
     });
   }
 }

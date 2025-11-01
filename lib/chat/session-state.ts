@@ -9,6 +9,7 @@ import { type Patch } from '@/types/patch';
 import { type ParsedRack, type RackCapabilities, type RackAnalysis } from '@/types/rack';
 import { type RackVisionAnalysis } from '@/lib/vision/rack-analyzer';
 import { type Module } from '@/types/module';
+import { type PatchModification } from './modification-mapper';
 
 /**
  * Chat message in conversation history
@@ -40,6 +41,7 @@ export interface ChatSession {
   // Patch context
   currentPatch?: Patch; // Latest generated patch
   patchHistory: Patch[]; // Previous patches for variations/undo
+  modifications: PatchModification[]; // History of refinements made
 
   // Conversation
   messages: ChatMessage[];
@@ -115,6 +117,7 @@ export async function createSession(
     lastActivity: new Date(),
     ttl: getSessionTTL(),
     patchHistory: [],
+    modifications: [],
     messages: [],
     isDemoMode,
   };

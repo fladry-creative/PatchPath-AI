@@ -15,12 +15,24 @@ import {
   handlePatchGeneration,
   handleRandomRack,
   handleConversationalChat,
+  handlePatchRefinement,
+  handlePatchSave,
+  handleStartFresh,
+  handlePatchVariations,
 } from '@/lib/chat/chat-handlers';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const encoder = new TextEncoder();
+
+/**
+ * Helper to send SSE messages
+ */
+function sendSSE(controller: ReadableStreamDefaultController, type: string, data: unknown) {
+  const message = JSON.stringify({ type, ...data });
+  controller.enqueue(encoder.encode(`data: ${message}\n\n`));
+}
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -124,6 +136,27 @@ export async function POST(request: NextRequest) {
             case Intent.GENERATE_PATCH:
               // User wants to generate a patch
               await handlePatchGeneration(session!, lastUserMessage.content, controller, userId);
+              break;
+
+            case Intent.REFINE_PATCH:
+              // User wants to refine existing patch
+              await handlePatchRefinement(session!, lastUserMessage.content, controller, userId);
+              break;
+
+            case Intent.SAVE_PATCH:
+              // User wants to save current patch
+              if (userId) {
+                await handlePatchSave(session!, controller, userId);
+              } else {
+                sendSSE(controller, 'content', {
+                  content: '💾 Please sign in to save patches to your Cookbook!\n',
+                });
+              }
+              break;
+
+            case Intent.SHOW_VARIATIONS:
+              // User wants to see variations
+              await handlePatchVariations(session!, controller, userId);
               break;
 
             case Intent.DEMO_REQUEST:
